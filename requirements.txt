@@ -1,0 +1,39 @@
+# Core Dependencies
+pydantic>=2.0.0
+pydantic-ai>=0.0.1
+pydantic-settings>=2.0.0
+python-dotenv>=1.0.0
+
+# HTTP Clients
+httpx>=0.24.0
+
+# Financial Calculations
+numpy-financial>=1.0.0
+
+# FastAPI Backend
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+websockets>=11.0
+
+# CLI
+typer>=0.9.0
+rich>=13.0.0
+
+# Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-asyncio>=0.21.0
+
+# Code Quality
+ruff>=0.1.0
+mypy>=1.5.0
+
+# Optional: Gmail API (uncomment when needed)
+# google-auth>=2.0.0
+# google-api-python-client>=2.0.0
+
+# PDF Parsing
+pdfplumber>=0.10.0
+
+# Optional: Playwright for parsing (uncomment when needed)
+# playwright>=1.40.0

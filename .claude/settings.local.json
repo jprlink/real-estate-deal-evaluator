@@ -20,7 +20,11 @@
       "WebFetch(domain:github.com)",
       "mcp__context7__resolve-library-id",
       "WebSearch",
-      "WebFetch(domain:ai.pydantic.dev)"
+      "WebFetch(domain:ai.pydantic.dev)",
+      "Bash(pip install:*)",
+      "Bash(pip uninstall:*)",
+      "Bash(npm start)",
+      "Bash(npm install)"
     ],
     "deny": []
   }
