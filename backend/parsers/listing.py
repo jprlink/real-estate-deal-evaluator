@@ -82,38 +82,90 @@ def parse_listing_html(html_content: str) -> Dict[str, Any]:
     if bedrooms_match:
         listing_data["bedrooms"] = int(bedrooms_match.group(1))
 
-    # Extract floor (formats: "3ème étage", "3rd floor")
+    # Extract floor (French formats: "Étage 1/4", "RDC/3", "Rez-de-chaussée/3 étages", "3ème étage")
     floor_patterns = [
-        r"(\d+)(?:ème|er)\s*étage",
-        r"(\d+)(?:st|nd|rd|th)\s*floor"
+        r"Étage\s+(\d+)/\d+",  # "Étage 1/4"
+        r"RDC/\d+",  # "RDC/3" (Ground floor)
+        r"Rez-de-chaussée",  # "Rez-de-chaussée"
+        r"(\d+)(?:ème|er)\s*étage",  # "3ème étage"
+        r"(\d+)(?:st|nd|rd|th)\s*floor"  # "3rd floor"
     ]
     for pattern in floor_patterns:
         match = re.search(pattern, html_content, re.IGNORECASE)
         if match:
-            listing_data["floor"] = int(match.group(1))
+            if "RDC" in match.group(0) or "Rez-de-chaussée" in match.group(0):
+                listing_data["floor"] = 0
+            elif match.group(1) if match.lastindex else None:
+                listing_data["floor"] = int(match.group(1))
             break
 
-    # Extract DPE grade (A-G)
-    dpe_match = re.search(r"DPE\s*:?\s*([A-G])", html_content, re.IGNORECASE)
-    if dpe_match:
-        listing_data["dpe"] = dpe_match.group(1).upper()
+    # Extract DPE grade (formats: "DPE: C", "DPE C", just "C" near energy keywords)
+    dpe_patterns = [
+        r"DPE\s*:?\s*([A-G])",  # "DPE: C" or "DPE C"
+        r"Classe\s+énergie\s*:?\s*([A-G])",  # "Classe énergie: C"
+        r"Diagnostic.*?([A-G])",  # "Diagnostic ... C"
+        r"Énergie\s*:?\s*([A-G])"  # "Énergie: C"
+    ]
+    for pattern in dpe_patterns:
+        match = re.search(pattern, html_content, re.IGNORECASE)
+        if match:
+            listing_data["dpe"] = match.group(1).upper()
+            break
 
-    # Extract postal code (Paris: 75001-75020)
-    postal_match = re.search(r"\b(75\d{3})\b", html_content)
+    # Extract co-owner fees (charges de copropriété)
+    copropriety_patterns = [
+        r"Charges?\s+(?:de\s+)?copropri[ée]t[ée]\s*:?\s*(\d[\d\s,\.]*)\s*€",  # "Charges copropriété: 1200 €"
+        r"Charges?\s*:?\s*(\d[\d\s,\.]*)\s*€\s*(?:par\s+mois|/mois|mensuel)",  # "Charges: 1200 € par mois"
+        r"(\d[\d\s,\.]*)\s*€\s*de\s+charges"  # "1200 € de charges"
+    ]
+    for pattern in copropriety_patterns:
+        match = re.search(pattern, html_content, re.IGNORECASE)
+        if match:
+            charges_str = match.group(1).replace(" ", "").replace(",", ".").replace(".", "")
+            try:
+                listing_data["copropriety_fees"] = float(charges_str)
+                break
+            except ValueError:
+                continue
+
+    # Extract postal code (any French postal code: 5 digits)
+    postal_match = re.search(r"\b(\d{5})\b", html_content)
     if postal_match:
         listing_data["address"]["postal_code"] = postal_match.group(1)
-        listing_data["address"]["city"] = "Paris"
+        # Derive city/department from postal code
+        postal_code = postal_match.group(1)
+        if postal_code.startswith("75"):
+            listing_data["address"]["city"] = "Paris"
+        elif postal_code.startswith("92"):
+            listing_data["address"]["city"] = "Hauts-de-Seine"
+        elif postal_code.startswith("93"):
+            listing_data["address"]["city"] = "Seine-Saint-Denis"
+        elif postal_code.startswith("94"):
+            listing_data["address"]["city"] = "Val-de-Marne"
 
-    # Extract street address (simplified - looks for common patterns)
-    street_patterns = [
-        r"(\d+\s+(?:rue|avenue|boulevard|place)\s+[^\n,]+)",
-        r"(?:Adresse|Address)\s*:?\s*([^\n,]+)"
+    # Extract quartier or neighborhood (e.g., "Amiraux-Simplon-Poissonniers")
+    quartier_patterns = [
+        r"(?:quartier|neighborhood)\s*:?\s*([^,\n]+)",
+        r"([A-Z][a-zé\-]+(?:\-[A-Z][a-zé\-]+)*),?\s+Paris",  # Capitalized names before "Paris"
+        r"Paris\s+(\d+)(?:ème|e)",  # Paris arrondissement
     ]
-    for pattern in street_patterns:
+    for pattern in quartier_patterns:
         match = re.search(pattern, html_content, re.IGNORECASE)
         if match:
             listing_data["address"]["street"] = match.group(1).strip()
             break
+
+    # If no quartier, try street address
+    if not listing_data["address"].get("street"):
+        street_patterns = [
+            r"(\d+\s+(?:rue|avenue|boulevard|place)\s+[^\n,]+)",
+            r"(?:Adresse|Address)\s*:?\s*([^\n,]+)"
+        ]
+        for pattern in street_patterns:
+            match = re.search(pattern, html_content, re.IGNORECASE)
+            if match:
+                listing_data["address"]["street"] = match.group(1).strip()
+                break
 
     # Extract features (balcony, parking, elevator, etc.)
     feature_keywords = [

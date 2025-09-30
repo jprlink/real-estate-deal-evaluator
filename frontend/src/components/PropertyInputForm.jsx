@@ -23,14 +23,19 @@ const PropertyInputForm = ({ onSubmit, loading, parsedData }) => {
     if (parsedData) {
       setFormData(prev => ({
         ...prev,
-        address: parsedData.address || prev.address,
+        address: parsedData.address || parsedData.city || prev.address,
         postal_code: parsedData.postal_code || prev.postal_code,
         price: parsedData.price ? String(parsedData.price) : prev.price,
         surface: parsedData.surface ? String(parsedData.surface) : prev.surface,
         rooms: parsedData.rooms ? String(parsedData.rooms) : prev.rooms,
         bedrooms: parsedData.bedrooms ? String(parsedData.bedrooms) : prev.bedrooms,
-        floor: parsedData.floor ? String(parsedData.floor) : prev.floor,
-        dpe: parsedData.dpe || prev.dpe
+        floor: parsedData.floor !== undefined ? String(parsedData.floor) : prev.floor,
+        dpe: parsedData.dpe || prev.dpe,
+        down_payment: parsedData.down_payment ? String(parsedData.down_payment) : prev.down_payment,
+        loan_amount: parsedData.loan_amount ? String(parsedData.loan_amount) : prev.loan_amount,
+        annual_rate: parsedData.annual_rate ? String(parsedData.annual_rate) : prev.annual_rate,
+        loan_term: parsedData.loan_term ? String(parsedData.loan_term) : prev.loan_term,
+        monthly_rent: parsedData.monthly_rent ? String(parsedData.monthly_rent) : prev.monthly_rent
       }));
     }
   }, [parsedData]);
@@ -68,14 +73,14 @@ const PropertyInputForm = ({ onSubmit, loading, parsedData }) => {
       {/* Property Info */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Address
+          Location
         </label>
         <input
           type="text"
           name="address"
           value={formData.address}
           onChange={handleChange}
-          placeholder="10 Rue de Rivoli"
+          placeholder="Amiraux-Simplon-Poissonniers"
           className="input text-sm"
           required
         />
@@ -91,8 +96,9 @@ const PropertyInputForm = ({ onSubmit, loading, parsedData }) => {
             name="postal_code"
             value={formData.postal_code}
             onChange={handleChange}
-            placeholder="75001"
-            pattern="75[0-9]{3}"
+            placeholder="75018"
+            pattern="[0-9]{5}"
+            title="5-digit postal code"
             className="input text-sm"
             required
           />

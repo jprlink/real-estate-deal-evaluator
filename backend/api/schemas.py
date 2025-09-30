@@ -8,8 +8,8 @@ from pydantic import BaseModel, Field
 
 class PropertyEvaluationRequest(BaseModel):
     """Request schema for property evaluation."""
-    address: str
-    postal_code: str = Field(..., pattern=r"^75\d{3}$")
+    address: str  # Can be quartier, city, or full address
+    postal_code: str = Field(..., pattern=r"^\d{5}$")  # Any French postal code (5 digits)
     price: float = Field(..., gt=0)
     surface: float = Field(..., gt=0)
     rooms: int = Field(..., ge=1)

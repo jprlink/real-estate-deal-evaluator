@@ -8,6 +8,70 @@ from backend.parsers.listing import parse_listing_html, normalize_listing_data
 from typing import Optional, Dict, Any
 import logging
 
+
+def get_city_from_postal_code(postal_code: str) -> str:
+    """Derive city/department from French postal code."""
+    if not postal_code or len(postal_code) != 5:
+        return ""
+
+    dept = postal_code[:2]
+    city_map = {
+        "75": "Paris",
+        "92": "Hauts-de-Seine",
+        "93": "Seine-Saint-Denis",
+        "94": "Val-de-Marne",
+        "91": "Essonne",
+        "78": "Yvelines",
+        "95": "Val-d'Oise",
+        "77": "Seine-et-Marne",
+        "13": "Marseille",
+        "69": "Lyon",
+        "31": "Toulouse",
+        "33": "Bordeaux",
+        "59": "Lille",
+        "44": "Nantes",
+        "67": "Strasbourg",
+        "35": "Rennes",
+        "34": "Montpellier",
+        "06": "Nice"
+    }
+    return city_map.get(dept, f"Département {dept}")
+
+
+def calculate_notary_fees(price: float) -> float:
+    """Calculate estimated notary fees (frais de notaire) for property purchase."""
+    # Standard rates for old properties (logement ancien): ~7-8%
+    # For new properties (logement neuf): ~2-3%
+    # Using 7.5% as average for old properties
+    return price * 0.075
+
+
+def calculate_financing_defaults(price: float, monthly_rent: float = None) -> Dict[str, Any]:
+    """Calculate smart financing defaults based on price."""
+    # Standard assumptions:
+    # - Down payment: 20% (minimum for investment properties)
+    # - Interest rate: 3.5% (current market average)
+    # - Loan term: 20 years (standard for investment)
+    # - Monthly rent: estimate 3-4% gross yield if not provided
+
+    down_payment = price * 0.20
+    loan_amount = price * 0.80
+    annual_rate = 0.035
+    loan_term = 20
+
+    if monthly_rent is None:
+        # Estimate rent based on 3.5% gross yield
+        annual_rent = price * 0.035
+        monthly_rent = annual_rent / 12
+
+    return {
+        "down_payment": round(down_payment, 2),
+        "loan_amount": round(loan_amount, 2),
+        "annual_rate": annual_rate,
+        "loan_term": loan_term,
+        "monthly_rent": round(monthly_rent, 2) if monthly_rent else None
+    }
+
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
@@ -19,12 +83,20 @@ class ParseURLRequest(BaseModel):
 class ParseResponse(BaseModel):
     address: Optional[str] = None
     postal_code: Optional[str] = None
+    city: Optional[str] = None
     price: Optional[float] = None
     surface: Optional[float] = None
     rooms: Optional[int] = None
     bedrooms: Optional[int] = None
     floor: Optional[int] = None
     dpe: Optional[str] = None
+    copropriety_fees: Optional[float] = None
+    notary_fees: Optional[float] = None
+    down_payment: Optional[float] = None
+    loan_amount: Optional[float] = None
+    annual_rate: Optional[float] = None
+    loan_term: Optional[int] = None
+    monthly_rent: Optional[float] = None
     success: bool
     message: str
 
@@ -34,35 +106,154 @@ async def parse_url(request: ParseURLRequest):
     """
     Parse property listing from a URL.
 
-    Note: In production, this would fetch the URL content using requests or playwright.
-    For now, returns placeholder data.
+    Fetches the webpage and extracts property details.
     """
     try:
+        import httpx
+        import re
+
         logger.info(f"Parsing URL: {request.url}")
 
-        # TODO: Implement actual URL fetching and parsing
-        # In production:
-        # 1. Fetch HTML content from URL
-        # 2. Parse with parse_listing_html()
-        # 3. Normalize with normalize_listing_data()
+        # Fetch HTML content from URL
+        async with httpx.AsyncClient(follow_redirects=True, timeout=30.0) as client:
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+            response = await client.get(str(request.url), headers=headers)
+            response.raise_for_status()
+            html_content = response.text
 
-        # For now, return sample parsed data
+        logger.info(f"Fetched {len(html_content)} characters from URL")
+
+        # Parse with existing parser
+        parsed = parse_listing_html(html_content)
+        normalized = normalize_listing_data(parsed)
+
+        # Extract address and postal code
+        address_str = None
+        postal_code = None
+
+        if normalized.get("address"):
+            addr = normalized["address"]
+            if isinstance(addr, dict):
+                parts = []
+                if addr.get("street"):
+                    parts.append(addr["street"])
+                if addr.get("city"):
+                    parts.append(addr["city"])
+                address_str = ", ".join(parts) if parts else None
+                postal_code = addr.get("postal_code")
+            else:
+                address_str = str(addr)
+                postal_match = re.search(r"\d{5}", address_str)
+                if postal_match:
+                    postal_code = postal_match.group(0)
+
+        # Check if we extracted meaningful data
+        has_data = any([
+            normalized.get("price"),
+            normalized.get("surface"),
+            normalized.get("rooms")
+        ])
+
+        if has_data:
+            # Calculate additional fields
+            city = get_city_from_postal_code(postal_code) if postal_code else None
+            notary_fees = calculate_notary_fees(normalized["price"]) if normalized.get("price") else None
+            financing = calculate_financing_defaults(
+                normalized["price"],
+                normalized.get("monthly_rent")
+            ) if normalized.get("price") else {}
+
+            # Use city name for location field
+            location = city or address_str
+
+            return ParseResponse(
+                success=True,
+                message=f"Successfully parsed URL! Extracted property details and calculated smart defaults. Please review.",
+                address=location,
+                postal_code=postal_code,
+                city=city,
+                price=normalized.get("price"),
+                surface=normalized.get("surface"),
+                rooms=normalized.get("rooms"),
+                bedrooms=normalized.get("bedrooms"),
+                floor=normalized.get("floor"),
+                dpe=normalized.get("dpe"),
+                copropriety_fees=normalized.get("copropriety_fees"),
+                notary_fees=notary_fees,
+                down_payment=financing.get("down_payment"),
+                loan_amount=financing.get("loan_amount"),
+                annual_rate=financing.get("annual_rate"),
+                loan_term=financing.get("loan_term"),
+                monthly_rent=financing.get("monthly_rent")
+            )
+        else:
+            return ParseResponse(
+                success=False,
+                message="URL was fetched but no property details could be extracted. The format may not be recognized. Please enter details manually.",
+                address=None,
+                postal_code=None,
+                city=None,
+                price=None,
+                surface=None,
+                rooms=None,
+                bedrooms=None,
+                floor=None,
+                dpe=None,
+                copropriety_fees=None,
+                notary_fees=None,
+                down_payment=None,
+                loan_amount=None,
+                annual_rate=None,
+                loan_term=None,
+                monthly_rent=None
+            )
+
+    except httpx.HTTPError as e:
+        logger.error(f"HTTP error parsing URL: {str(e)}")
         return ParseResponse(
             success=False,
-            message="URL parsing not yet fully implemented. Please use the form to enter property details manually.",
+            message=f"Failed to fetch URL: {str(e)}. Please check the URL and try again.",
             address=None,
             postal_code=None,
+            city=None,
             price=None,
             surface=None,
             rooms=None,
             bedrooms=None,
             floor=None,
-            dpe=None
+            dpe=None,
+            copropriety_fees=None,
+            notary_fees=None,
+            down_payment=None,
+            loan_amount=None,
+            annual_rate=None,
+            loan_term=None,
+            monthly_rent=None
         )
-
     except Exception as e:
-        logger.error(f"Error parsing URL: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to parse URL: {str(e)}")
+        logger.error(f"Error parsing URL: {str(e)}", exc_info=True)
+        return ParseResponse(
+            success=False,
+            message=f"Error processing URL: {str(e)}. Please enter details manually.",
+            address=None,
+            postal_code=None,
+            city=None,
+            price=None,
+            surface=None,
+            rooms=None,
+            bedrooms=None,
+            floor=None,
+            dpe=None,
+            copropriety_fees=None,
+            notary_fees=None,
+            down_payment=None,
+            loan_amount=None,
+            annual_rate=None,
+            loan_term=None,
+            monthly_rent=None
+        )
 
 
 @router.post("/parse/pdf", response_model=ParseResponse)
@@ -143,17 +334,36 @@ async def parse_pdf(file: UploadFile = File(...)):
         ])
 
         if has_data:
+            # Calculate additional fields
+            city = get_city_from_postal_code(postal_code) if postal_code else None
+            notary_fees = calculate_notary_fees(normalized["price"]) if normalized.get("price") else None
+            financing = calculate_financing_defaults(
+                normalized["price"],
+                normalized.get("monthly_rent")
+            ) if normalized.get("price") else {}
+
+            # Use city name for location field (not quartier)
+            location = city or address_str
+
             return ParseResponse(
                 success=True,
-                message=f"Successfully parsed {file.filename}! Extracted property details. Please review and complete missing fields.",
-                address=address_str,
+                message=f"Successfully parsed {file.filename}! Extracted property details and calculated smart defaults. Please review.",
+                address=location,  # This becomes the Location field value
                 postal_code=postal_code,
+                city=city,
                 price=normalized.get("price"),
                 surface=normalized.get("surface"),
                 rooms=normalized.get("rooms"),
                 bedrooms=normalized.get("bedrooms"),
                 floor=normalized.get("floor"),
-                dpe=normalized.get("dpe")
+                dpe=normalized.get("dpe"),
+                copropriety_fees=normalized.get("copropriety_fees"),
+                notary_fees=notary_fees,
+                down_payment=financing.get("down_payment"),
+                loan_amount=financing.get("loan_amount"),
+                annual_rate=financing.get("annual_rate"),
+                loan_term=financing.get("loan_term"),
+                monthly_rent=financing.get("monthly_rent")
             )
         else:
             return ParseResponse(
