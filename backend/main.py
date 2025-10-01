@@ -51,7 +51,6 @@ async def root():
             "health": "/health",
             "evaluate": "/api/evaluate",
             "parse_pdf": "/api/parse/pdf",
-            "parse_url": "/api/parse/url",
             "research": "/api/research",
             "negotiate": "/api/negotiate"
         }

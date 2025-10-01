@@ -6,7 +6,6 @@ import ChatMessage from './ChatMessage';
 const LeftPanel = ({ onPropertySubmit, loading, chatMessages, onChatMessage, onParsedData }) => {
   const [chatInput, setChatInput] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
-  const [urlInput, setUrlInput] = useState('');
   const [parsing, setParsing] = useState(false);
   const [parsedFormData, setParsedFormData] = useState(null);
   const chatEndRef = useRef(null);
@@ -62,36 +61,6 @@ const LeftPanel = ({ onPropertySubmit, loading, chatMessages, onChatMessage, onP
     }
   };
 
-  const handleUrlParse = async (e) => {
-    e.preventDefault();
-    if (!urlInput.trim()) return;
-
-    setParsing(true);
-    onChatMessage(`Fetching and parsing URL...`);
-
-    try {
-      const { parseURL } = await import('../services/api');
-      const result = await parseURL(urlInput);
-
-      if (result.success) {
-        // Auto-fill form with parsed data
-        setParsedFormData(result);
-        if (onParsedData) {
-          onParsedData(result);
-        }
-        onChatMessage(`✅ Successfully parsed listing! Form fields have been auto-filled. Please review and complete any missing information.`);
-        setUrlInput(''); // Clear URL input after success
-      } else {
-        onChatMessage(result.message || `⚠️ URL fetched but parsing failed. Please fill in the form manually.`);
-      }
-    } catch (error) {
-      console.error('Error parsing URL:', error);
-      onChatMessage(`❌ Error parsing URL: ${error.message}. Please check the URL and try again.`);
-    } finally {
-      setParsing(false);
-    }
-  };
-
   return (
     <>
       {/* Chat Interface */}
@@ -141,30 +110,6 @@ const LeftPanel = ({ onPropertySubmit, loading, chatMessages, onChatMessage, onP
           loading={loading || parsing}
           parsedData={parsedFormData}
         />
-
-        {/* URL Input */}
-        <div className="mt-4 pt-4 border-t border-gray-200">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Parse Listing from URL (Optional)
-          </label>
-          <form onSubmit={handleUrlParse} className="flex gap-2">
-            <input
-              type="url"
-              value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
-              placeholder="https://www.seloger.com/annonces/..."
-              className="input text-sm flex-1"
-              disabled={loading || parsing}
-            />
-            <button
-              type="submit"
-              disabled={loading || parsing || !urlInput.trim()}
-              className="btn-primary px-3"
-            >
-              <MapPin className="w-4 h-4" />
-            </button>
-          </form>
-        </div>
 
         {/* File Upload */}
         <div className="mt-4 pt-4 border-t border-gray-200">

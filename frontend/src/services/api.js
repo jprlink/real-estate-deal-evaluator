@@ -56,14 +56,4 @@ export const parsePDF = async (file) => {
   }
 };
 
-export const parseURL = async (url) => {
-  try {
-    const response = await api.post('/parse/url', { url });
-    return response.data;
-  } catch (error) {
-    console.error('Error parsing URL:', error);
-    throw error;
-  }
-};
-
 export default api;

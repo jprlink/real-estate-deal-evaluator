@@ -132,16 +132,7 @@ def parse_listing_html(html_content: str) -> Dict[str, Any]:
     postal_match = re.search(r"\b(\d{5})\b", html_content)
     if postal_match:
         listing_data["address"]["postal_code"] = postal_match.group(1)
-        # Derive city/department from postal code
-        postal_code = postal_match.group(1)
-        if postal_code.startswith("75"):
-            listing_data["address"]["city"] = "Paris"
-        elif postal_code.startswith("92"):
-            listing_data["address"]["city"] = "Hauts-de-Seine"
-        elif postal_code.startswith("93"):
-            listing_data["address"]["city"] = "Seine-Saint-Denis"
-        elif postal_code.startswith("94"):
-            listing_data["address"]["city"] = "Val-de-Marne"
+        # City will be inferred from postal code in parse.py using get_city_from_postal_code()
 
     # Extract quartier or neighborhood (e.g., "Amiraux-Simplon-Poissonniers")
     quartier_patterns = [
@@ -239,41 +230,3 @@ def normalize_listing_data(raw_data: Dict[str, Any]) -> Dict[str, Any]:
     return normalized
 
 
-def extract_listing_url_info(url: str) -> Dict[str, str]:
-    """
-    Extract information from listing URL (site, listing ID).
-
-    Args:
-        url: Listing page URL
-
-    Returns:
-        dict: URL metadata including source site and listing ID
-
-    Example:
-        >>> extract_listing_url_info("https://www.seloger.com/annonces/achat/123456")
-        {'source': 'seloger', 'listing_id': '123456'}
-    """
-    url_lower = url.lower()
-
-    # Detect source site
-    source = None
-    if "seloger" in url_lower:
-        source = "seloger"
-    elif "leboncoin" in url_lower:
-        source = "leboncoin"
-    elif "pap.fr" in url_lower:
-        source = "pap"
-    elif "logic-immo" in url_lower:
-        source = "logic-immo"
-
-    # Extract listing ID (simplified - looks for numeric patterns)
-    listing_id = None
-    id_match = re.search(r"/(\d{6,})", url)
-    if id_match:
-        listing_id = id_match.group(1)
-
-    return {
-        "source": source,
-        "listing_id": listing_id,
-        "url": url
-    }

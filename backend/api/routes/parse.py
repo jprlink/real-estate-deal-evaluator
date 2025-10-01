@@ -1,29 +1,76 @@
 """
-PDF and URL parsing API endpoints.
+PDF parsing API endpoints.
 """
 
 from fastapi import APIRouter, HTTPException, UploadFile, File
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel
 from backend.parsers.listing import parse_listing_html, normalize_listing_data
 from typing import Optional, Dict, Any
 import logging
 
 
 def get_city_from_postal_code(postal_code: str) -> str:
-    """Derive city/department from French postal code."""
+    """
+    Infer city name from French postal code.
+
+    Returns the most common city name associated with the postal code,
+    not the department name.
+
+    Args:
+        postal_code: 5-digit French postal code
+
+    Returns:
+        str: City name or empty string if unknown
+    """
     if not postal_code or len(postal_code) != 5:
         return ""
 
+    # For Paris arrondissements (750XX)
+    if postal_code.startswith("750"):
+        return "Paris"
+
+    # Major cities with direct mapping
     dept = postal_code[:2]
-    city_map = {
-        "75": "Paris",
-        "92": "Hauts-de-Seine",
-        "93": "Seine-Saint-Denis",
-        "94": "Val-de-Marne",
-        "91": "Essonne",
-        "78": "Yvelines",
-        "95": "Val-d'Oise",
-        "77": "Seine-et-Marne",
+
+    # Île-de-France region - map to major cities
+    idf_cities = {
+        "92": {  # Hauts-de-Seine
+            "920": "Nanterre", "921": "Neuilly-sur-Seine", "922": "Boulogne-Billancourt",
+            "923": "Levallois-Perret", "924": "Clichy", "925": "Colombes", "926": "Courbevoie",
+            "927": "Asnières-sur-Seine", "928": "Issy-les-Moulineaux", "929": "Rueil-Malmaison"
+        },
+        "93": {  # Seine-Saint-Denis
+            "930": "Bobigny", "931": "Saint-Denis", "932": "Montreuil", "933": "Aubervilliers",
+            "934": "Pantin", "935": "Bondy", "936": "Noisy-le-Sec"
+        },
+        "94": {  # Val-de-Marne
+            "940": "Créteil", "941": "Vitry-sur-Seine", "942": "Ivry-sur-Seine",
+            "943": "Maisons-Alfort", "944": "Saint-Mandé", "945": "Vincennes"
+        },
+        "91": {  # Essonne
+            "910": "Évry", "911": "Corbeil-Essonnes", "912": "Massy", "913": "Palaiseau"
+        },
+        "78": {  # Yvelines
+            "780": "Versailles", "781": "Saint-Germain-en-Laye", "782": "Sartrouville"
+        },
+        "95": {  # Val-d'Oise
+            "950": "Cergy", "951": "Argenteuil", "952": "Sarcelles", "953": "Pontoise"
+        },
+        "77": {  # Seine-et-Marne
+            "770": "Melun", "771": "Meaux", "772": "Chelles", "773": "Fontainebleau"
+        }
+    }
+
+    # Check for specific city match in Île-de-France
+    if dept in idf_cities:
+        prefix = postal_code[:3]
+        if prefix in idf_cities[dept]:
+            return idf_cities[dept][prefix]
+        # Return first major city in department if no specific match
+        return next(iter(idf_cities[dept].values()))
+
+    # Major French cities outside Paris region
+    major_cities = {
         "13": "Marseille",
         "69": "Lyon",
         "31": "Toulouse",
@@ -33,9 +80,26 @@ def get_city_from_postal_code(postal_code: str) -> str:
         "67": "Strasbourg",
         "35": "Rennes",
         "34": "Montpellier",
-        "06": "Nice"
+        "06": "Nice",
+        "76": "Rouen",
+        "44": "Nantes",
+        "21": "Dijon",
+        "63": "Clermont-Ferrand",
+        "83": "Toulon",
+        "38": "Grenoble",
+        "49": "Angers",
+        "54": "Nancy",
+        "57": "Metz",
+        "29": "Brest",
+        "87": "Limoges",
+        "25": "Besançon",
+        "45": "Orléans",
+        "68": "Mulhouse",
+        "62": "Calais",
+        "80": "Amiens"
     }
-    return city_map.get(dept, f"Département {dept}")
+
+    return major_cities.get(dept, "")
 
 
 def calculate_notary_fees(price: float) -> float:
@@ -76,10 +140,6 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-class ParseURLRequest(BaseModel):
-    url: HttpUrl
-
-
 class ParseResponse(BaseModel):
     address: Optional[str] = None
     postal_code: Optional[str] = None
@@ -99,161 +159,6 @@ class ParseResponse(BaseModel):
     monthly_rent: Optional[float] = None
     success: bool
     message: str
-
-
-@router.post("/parse/url", response_model=ParseResponse)
-async def parse_url(request: ParseURLRequest):
-    """
-    Parse property listing from a URL.
-
-    Fetches the webpage and extracts property details.
-    """
-    try:
-        import httpx
-        import re
-
-        logger.info(f"Parsing URL: {request.url}")
-
-        # Fetch HTML content from URL
-        async with httpx.AsyncClient(follow_redirects=True, timeout=30.0) as client:
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            }
-            response = await client.get(str(request.url), headers=headers)
-            response.raise_for_status()
-            html_content = response.text
-
-        logger.info(f"Fetched {len(html_content)} characters from URL")
-
-        # Parse with existing parser
-        parsed = parse_listing_html(html_content)
-        normalized = normalize_listing_data(parsed)
-
-        # Extract address and postal code
-        address_str = None
-        postal_code = None
-
-        if normalized.get("address"):
-            addr = normalized["address"]
-            if isinstance(addr, dict):
-                parts = []
-                if addr.get("street"):
-                    parts.append(addr["street"])
-                if addr.get("city"):
-                    parts.append(addr["city"])
-                address_str = ", ".join(parts) if parts else None
-                postal_code = addr.get("postal_code")
-            else:
-                address_str = str(addr)
-                postal_match = re.search(r"\d{5}", address_str)
-                if postal_match:
-                    postal_code = postal_match.group(0)
-
-        # Check if we extracted meaningful data
-        has_data = any([
-            normalized.get("price"),
-            normalized.get("surface"),
-            normalized.get("rooms")
-        ])
-
-        if has_data:
-            # Calculate additional fields
-            city = get_city_from_postal_code(postal_code) if postal_code else None
-            notary_fees = calculate_notary_fees(normalized["price"]) if normalized.get("price") else None
-            financing = calculate_financing_defaults(
-                normalized["price"],
-                normalized.get("monthly_rent")
-            ) if normalized.get("price") else {}
-
-            # Use city name for location field
-            location = city or address_str
-
-            return ParseResponse(
-                success=True,
-                message=f"Successfully parsed URL! Extracted property details and calculated smart defaults. Please review.",
-                address=location,
-                postal_code=postal_code,
-                city=city,
-                price=normalized.get("price"),
-                surface=normalized.get("surface"),
-                rooms=normalized.get("rooms"),
-                bedrooms=normalized.get("bedrooms"),
-                floor=normalized.get("floor"),
-                dpe=normalized.get("dpe"),
-                copropriety_fees=normalized.get("copropriety_fees"),
-                notary_fees=notary_fees,
-                down_payment=financing.get("down_payment"),
-                loan_amount=financing.get("loan_amount"),
-                annual_rate=financing.get("annual_rate"),
-                loan_term=financing.get("loan_term"),
-                monthly_rent=financing.get("monthly_rent")
-            )
-        else:
-            return ParseResponse(
-                success=False,
-                message="URL was fetched but no property details could be extracted. The format may not be recognized. Please enter details manually.",
-                address=None,
-                postal_code=None,
-                city=None,
-                price=None,
-                surface=None,
-                rooms=None,
-                bedrooms=None,
-                floor=None,
-                dpe=None,
-                copropriety_fees=None,
-                notary_fees=None,
-                down_payment=None,
-                loan_amount=None,
-                annual_rate=None,
-                loan_term=None,
-                monthly_rent=None
-            )
-
-    except httpx.HTTPError as e:
-        logger.error(f"HTTP error parsing URL: {str(e)}")
-        return ParseResponse(
-            success=False,
-            message=f"Failed to fetch URL: {str(e)}. Please check the URL and try again.",
-            address=None,
-            postal_code=None,
-            city=None,
-            price=None,
-            surface=None,
-            rooms=None,
-            bedrooms=None,
-            floor=None,
-            dpe=None,
-            copropriety_fees=None,
-            notary_fees=None,
-            down_payment=None,
-            loan_amount=None,
-            annual_rate=None,
-            loan_term=None,
-            monthly_rent=None
-        )
-    except Exception as e:
-        logger.error(f"Error parsing URL: {str(e)}", exc_info=True)
-        return ParseResponse(
-            success=False,
-            message=f"Error processing URL: {str(e)}. Please enter details manually.",
-            address=None,
-            postal_code=None,
-            city=None,
-            price=None,
-            surface=None,
-            rooms=None,
-            bedrooms=None,
-            floor=None,
-            dpe=None,
-            copropriety_fees=None,
-            notary_fees=None,
-            down_payment=None,
-            loan_amount=None,
-            annual_rate=None,
-            loan_term=None,
-            monthly_rent=None
-        )
 
 
 @router.post("/parse/pdf", response_model=ParseResponse)
