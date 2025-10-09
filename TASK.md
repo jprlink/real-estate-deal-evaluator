@@ -1,5 +1,136 @@
 # Task Tracking - Real Estate Deal Evaluator
 
+## ✅ Completed Tasks (2025-10-01 - Update 2)
+
+### Task 15: Enhanced Features - Custom Timeframe, Legal Rent Visualization, City Detection ✅
+**Status**: Complete
+**Date**: 2025-10-01 (Update 2)
+
+**Completed**:
+- ✅ Added customizable projection timeframe (default 30 years, range 1-50)
+  - New field in PropertyInputForm: "Projection Years"
+  - Backend supports dynamic `projection_years` parameter
+  - Cash flow table title shows actual timeframe (e.g., "30-Year Cash Flow Analysis")
+- ✅ Implemented comprehensive legal rent control system
+  - Created `backend/data/rent_control.py` with official Paris rent control data
+  - Quartier-level data for all 20 Paris arrondissements
+  - Data for Lyon, Marseille, Bordeaux, Lille, Montpellier
+  - Functions: `get_rent_control_band()`, `check_rent_compliance()`, `get_recommended_rent()`
+- ✅ Created visual rent scale component (`RentScaleVisualization.jsx`)
+  - Shows min/max/median rent per m² for the area
+  - Visual gradient scale from green (below median) to red (above max)
+  - Property rent marker on scale showing exact position
+  - Compliance status with icon (✓ compliant, ✗ non-compliant)
+  - Detailed feedback: "Below median by €X/m²" or "Exceeds maximum by €X/m²"
+  - Action recommendations for non-compliant rents
+- ✅ Enhanced RightPanel integration
+  - Displays detected city in highlighted card at top (e.g., "Paris")
+  - Legal Rent Check card shows verdict + full visual scale
+  - Real-time compliance checking based on actual government data
+- ✅ Fixed city detection
+  - Now correctly uses official postal code database
+  - Displays detected city in RightPanel (fixes Paris/postcode mismatch)
+  - Backend returns `city` field in evaluation response
+
+**Key Features**:
+- **Custom Timeframes**: Users can analyze 1-50 years of cash flow (default 30)
+- **Real Legal Data**: Actual rent control bands from Paris Prefecture
+- **Visual Compliance**: Interactive scale shows where rent sits in legal range
+- **Smart Recommendations**: Suggests adjustments for non-compliant rents
+- **Accurate Location**: Postal code automatically maps to correct city
+
+**Example: Paris 18th (75018)**:
+- Legal range: €22.0 - €30.8 per m²
+- Median: €26.4 per m²
+- €1,200/month for 50m² = €24.0/m² → "Conformant – Low" (below median)
+
+**Files Created**:
+- `backend/data/rent_control.py`
+- `frontend/src/components/RentScaleVisualization.jsx`
+
+**Files Modified**:
+- `backend/api/schemas.py` - Added `RentBand`, `projection_years`, `city` fields
+- `backend/api/routes/evaluate.py` - Integrated rent compliance checking and city detection
+- `frontend/src/components/PropertyInputForm.jsx` - Added projection_years input
+- `frontend/src/components/RightPanel.jsx` - Added city display and rent scale
+- `frontend/src/components/CashFlowTable.jsx` - Dynamic timeframe in title
+
+---
+
+## ✅ Completed Tasks (2025-10-01 - Update 1)
+
+### Task 14: Postal Code & Appreciation Rate Integration ✅
+**Status**: Complete
+**Date**: 2025-10-01
+
+**Completed**:
+- ✅ Created official French postal code to city mapping database (`backend/data/postal_codes.py`)
+  - Comprehensive mapping for all Île-de-France departments (75, 92, 93, 94, 91, 78, 95, 77)
+  - Major cities across France (Lyon, Marseille, Toulouse, Bordeaux, etc.)
+  - Helper functions: `get_city_from_postal_code()`, `get_department_from_postal_code()`, `get_city_and_department()`
+- ✅ Updated `backend/api/routes/parse.py` to use official postal code database
+  - Fixed location/postcode mismatch issue (e.g., Paris postcode with wrong city name)
+- ✅ Created appreciation rate database (`backend/data/appreciation_rates.py`)
+  - Based on Notaires de France Q4 2024 / Q1 2025 market data
+  - Department-level appreciation rates for all major French regions
+  - Forward-looking adjustment (+1.5%) for 2025+ projections
+  - Functions: `get_appreciation_rate()`, `get_appreciation_rate_display()`, `get_appreciation_source()`
+- ✅ Implemented comprehensive cash flow calculations (`backend/calculations/cashflow.py`)
+  - 10-year cash flow projections with property appreciation
+  - `CashFlowProjection` dataclass with yearly: rental income, expenses, mortgage, NOI, cash flow, cumulative CF, property value, equity
+  - `calculate_cash_flow_projection()` - main projection calculator
+  - `calculate_total_return_with_sale()` - includes property sale proceeds
+- ✅ Updated API schemas (`backend/api/schemas.py`)
+  - Added `CashFlowYear` model for yearly data
+  - Extended `FinancialMetrics` with appreciation rate fields
+  - Extended `PropertyEvaluationResponse` with `cash_flow_projections` and `appreciation_source`
+- ✅ Updated evaluation endpoint (`backend/api/routes/evaluate.py`)
+  - Integrated appreciation rate lookup by postal code
+  - Calculate full 10-year amortization schedule
+  - Generate cash flow projections with appreciation
+  - Calculate real IRR from cash flows (not approximation)
+- ✅ Created React `CashFlowTable` component (`frontend/src/components/CashFlowTable.jsx`)
+  - Displays 10-year cash flow analysis in scrollable table
+  - Columns: Year, Rental Income, Operating Expenses, Mortgage, NOI, Cash Flow, Cumulative CF, Property Value, Equity
+  - Color-coded positive/negative cash flows (green/red)
+  - Summary row with totals
+- ✅ Updated `MiddlePanel` component (`frontend/src/components/MiddlePanel.jsx`)
+  - Chart now shows both Annual Cash Flow and Cumulative Cash Flow lines
+  - Added appreciation rate footnote below chart with source citation
+  - Integrated `CashFlowTable` component below chart
+  - Uses real backend data instead of mock data
+- ✅ Comprehensive unit tests (30 tests, 100% pass rate)
+  - `tests/backend/data/test_postal_codes.py` (9 tests)
+  - `tests/backend/data/test_appreciation_rates.py` (12 tests)
+  - `tests/backend/calculations/test_cashflow.py` (9 tests)
+
+**Key Features**:
+- **Official postal code mapping**: No more location mismatches (e.g., Paris postcode with wrong city)
+- **Market-based appreciation rates**: Real data from Notaires de France (Q4 2024 / Q1 2025)
+- **Regional variations**: Paris (-1.4%), Nice (+1.5%), Rennes (+2.3%), reflecting actual market conditions
+- **Full 10-year projections**: Shows yearly cash flow, cumulative totals, property value growth, and equity buildup
+- **Transparent sourcing**: Footnote displays appreciation rate and data source
+- **Interactive table**: Scrollable, color-coded table with all financial details
+- **Improved IRR**: Now calculated from actual cash flows including appreciation and sale proceeds
+
+**Files Created**:
+- `backend/data/postal_codes.py`
+- `backend/data/appreciation_rates.py`
+- `backend/data/__init__.py`
+- `backend/calculations/cashflow.py`
+- `frontend/src/components/CashFlowTable.jsx`
+- `tests/backend/data/test_postal_codes.py`
+- `tests/backend/data/test_appreciation_rates.py`
+- `tests/backend/calculations/test_cashflow.py`
+
+**Files Modified**:
+- `backend/api/routes/parse.py` - Uses official postal code database
+- `backend/api/routes/evaluate.py` - Integrated appreciation rate and cash flow projections
+- `backend/api/schemas.py` - Added cash flow models
+- `frontend/src/components/MiddlePanel.jsx` - Added table, chart enhancements, footnote
+
+---
+
 ## ✅ Completed Tasks (2025-09-30)
 
 ### Task 1: Environment Setup ✅

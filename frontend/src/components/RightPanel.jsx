@@ -1,5 +1,6 @@
 import React from 'react';
-import { CheckCircle, AlertTriangle, XCircle, Award, TrendingUp } from 'lucide-react';
+import { CheckCircle, AlertTriangle, XCircle, Award, TrendingUp, MapPin } from 'lucide-react';
+import RentScaleVisualization from './RentScaleVisualization';
 
 const RightPanel = ({ evaluationResult, loading }) => {
   if (loading || !evaluationResult) {
@@ -18,10 +19,23 @@ const RightPanel = ({ evaluationResult, loading }) => {
     );
   }
 
-  const { verdict, price_verdict, legal_rent_status, strategy_fits } = evaluationResult;
+  const { verdict, price_verdict, legal_rent_status, strategy_fits, rent_band, city } = evaluationResult;
 
   return (
     <div className="space-y-4">
+      {/* Detected City */}
+      {city && (
+        <div className="card bg-primary-50 border-primary-200">
+          <div className="flex items-center space-x-2">
+            <MapPin className="w-5 h-5 text-primary-600" />
+            <div>
+              <p className="text-sm font-medium text-gray-700">Detected Location</p>
+              <p className="text-lg font-bold text-primary-600">{city}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Verdict */}
       <VerdictCard
         title="Investment Verdict"
@@ -44,16 +58,12 @@ const RightPanel = ({ evaluationResult, loading }) => {
         }}
       />
 
-      {/* Legal Rent Status */}
-      <VerdictCard
-        title="Legal Rent Check"
-        verdict={legal_rent_status}
-        verdictConfig={{
-          'Conformant – Low': { color: 'green', icon: CheckCircle, text: 'Below rent ceiling' },
-          'Conformant – High': { color: 'yellow', icon: AlertTriangle, text: 'Near rent ceiling' },
-          'Non-conformant': { color: 'red', icon: XCircle, text: 'Exceeds legal limit' }
-        }}
-      />
+      {/* Legal Rent Check with Scale */}
+      <div className="card">
+        <h3 className="text-lg font-semibold mb-4">Legal Rent Check</h3>
+        <p className="text-sm font-medium text-gray-700 mb-3">{legal_rent_status}</p>
+        <RentScaleVisualization rentBand={rent_band} />
+      </div>
 
       {/* Strategy Fits */}
       <div className="card">

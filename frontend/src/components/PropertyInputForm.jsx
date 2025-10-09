@@ -15,7 +15,8 @@ const PropertyInputForm = ({ onSubmit, loading, parsedData }) => {
     loan_amount: '',
     annual_rate: '0.03',
     loan_term: '20',
-    monthly_rent: ''
+    monthly_rent: '',
+    projection_years: '30'  // Default 30 years
   });
 
   // Auto-fill form when parsed data is received
@@ -62,7 +63,8 @@ const PropertyInputForm = ({ onSubmit, loading, parsedData }) => {
       loan_amount: parseFloat(formData.loan_amount),
       annual_rate: parseFloat(formData.annual_rate),
       loan_term: parseInt(formData.loan_term),
-      monthly_rent: parseFloat(formData.monthly_rent)
+      monthly_rent: parseFloat(formData.monthly_rent),
+      projection_years: parseInt(formData.projection_years) || 30
     };
 
     onSubmit(data);
@@ -274,19 +276,38 @@ const PropertyInputForm = ({ onSubmit, loading, parsedData }) => {
           </div>
         </div>
 
-        <div className="mt-3">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Expected Monthly Rent (€)
-          </label>
-          <input
-            type="number"
-            name="monthly_rent"
-            value={formData.monthly_rent}
-            onChange={handleChange}
-            placeholder="2000"
-            className="input text-sm"
-            required
-          />
+        <div className="grid grid-cols-2 gap-3 mt-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Expected Monthly Rent (€)
+            </label>
+            <input
+              type="number"
+              name="monthly_rent"
+              value={formData.monthly_rent}
+              onChange={handleChange}
+              placeholder="2000"
+              className="input text-sm"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Projection Years
+            </label>
+            <input
+              type="number"
+              name="projection_years"
+              value={formData.projection_years}
+              onChange={handleChange}
+              placeholder="30"
+              min="1"
+              max="50"
+              className="input text-sm"
+              required
+            />
+          </div>
         </div>
       </div>
 

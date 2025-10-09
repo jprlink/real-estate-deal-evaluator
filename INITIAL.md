@@ -1,21 +1,26 @@
 ## FEATURE:
 
-- **Primary “Deal Evaluator” Agent (Pydantic-AI)** that returns a **60-second Buy/Pass verdict** using **deterministic math (no AI heuristics)**.  
-  - **Unified Verdict badges** (green/amber/red) driven by thresholds for **DSCR (Debt Service Coverage Ratio)**, **IRR (Internal Rate of Return)**, **TMC (Total Monthly Cost) vs. rent**, and **compliance** (encadrement des loyers, DPE).  
-  - Computes **Legal Rent Check** (Paris encadrement: reference & ceiling), **now-cast valuation** from **DVF (Demandes de Valeurs Foncières)** adjusted by listing signals (e.g., price cuts, days-on-market), and a **capital comparison** vs **ETFs (Exchange-Traded Funds)**, **bonds**, **stocks** on equal cash & horizon.  
-  - **Analytics pane** shows **both**: (1) a compact **cash-flow graph** (annual bars + cumulative line) and (2) a **year-by-year cash-flow table**.
+- **Primary "Deal Evaluator" Agent (Pydantic-AI)** that returns a **60-second Buy/Pass verdict** using **deterministic math (no AI heuristics)**.
+  - **Unified Verdict badges** (green/amber/red) driven by thresholds for **DSCR (Debt Service Coverage Ratio)**, **IRR (Internal Rate of Return)**, **TMC (Total Monthly Cost) vs. rent**, and **compliance** (encadrement des loyers, DPE).
+  - Computes **Legal Rent Check** (**nationwide coverage**: Paris encadrement + major cities rent control + regional estimates for all France) with automatic fallback to market estimates for areas without legal control.
+  - **Now-cast valuation** from **DVF (Demandes de Valeurs Foncières)** adjusted by listing signals (e.g., price cuts, days-on-market), and a **capital comparison** vs **ETFs (Exchange-Traded Funds)**, **bonds**, **stocks** on equal cash & horizon.
+  - **Analytics pane** shows **both**: (1) a compact **cash-flow graph** (annual bars + cumulative line) with **mortgage payoff visibility** and (2) a **customizable year-by-year cash-flow table** (1-50 years, default 30) showing transition to positive cash flow after mortgage is paid off.
 
-- **Research Sub-Agent (tool of the primary agent)** using Brave Search + internal parsers:  
-  - Normalizes listing facts (address, price, surface, rooms) from user input and PDFs, fetches DVF comps, checks **zone tendue**, rent caps, and prepares typed Pydantic payloads for the evaluator.  
+- **Research Sub-Agent (tool of the primary agent)** using Brave Search + internal parsers:
+  - Normalizes listing facts (address, price, surface, rooms) from user input and PDFs, fetches DVF comps, checks **zone tendue**, rent caps, and prepares typed Pydantic payloads for the evaluator.
+  - **Automatic city detection** from postal code using comprehensive French postal code database (all 101 departments + specific city mappings).
+  - **Property appreciation rates** based on Notaires de France Q4 2024/Q1 2025 market data by department with forward-looking adjustments (+1.5%).
   - **Environmental Risks (postcode-based)** via Géorisques: summarizes **natural** (e.g., flood, groundwater rise, seismicity, ground movement, clay shrink–swell, radon) and **technological** risks (e.g., ICPE sites, dangerous-materials pipelines, soil pollution), with address- vs commune-level flags and a link for detail.
 
 - **Negotiation Email Sub-Agent (tool of the primary agent)** using Gmail:  
   - Drafts a **Negotiation Pack** email (never auto-sends) with comps table, legal-rent status, DSCR/IRR snapshots, capital-markets alternative, and a clear price/terms ask.
 
-- **Web Application** with modern browser-based frontend (primary interface):  
-  - **Interactive Dashboard** with real-time evaluation results and analytics visualization  
-  - **Responsive 3-column layout** optimized for desktop and tablet use  
-  - **Real-time updates** as user inputs property details and parameters  
+- **Web Application** with modern browser-based frontend (primary interface):
+  - **Interactive Dashboard** with real-time evaluation results and analytics visualization
+  - **Responsive 3-column layout** optimized for desktop and tablet use
+  - **Real-time updates** as user inputs property details and parameters
+  - **Nationwide French property support** - evaluates properties in all 101 departments (Paris to Thonon-les-Bains to Marseille)
+  - **Customizable projection timeframe** (1-50 years, default 30) with visual cash flow tracking
   - **Export capabilities** for reports and analysis summaries  
 
 - **CLI** as secondary interface for power users and automation:  
@@ -26,16 +31,24 @@
 - **Strategy Fit (0–100) with reasons, sorted best-fit first:**  
   - **Owner-occupier**, **Location nue (unfurnished)**, **LMNP (furnished, micro-BIC)**, **Colocation**, **Value-Add / déficit foncier** — each card shows **Pros & Cons** tied to actual metrics (TMC vs rent, DSCR, IRR, compliance, bedrooms, discount vs median).
 
-**Web Application Layout (UX requirement):**  
-- **Browser-based interface** accessible at `http://localhost:8000` (development) with modern, responsive design  
-- **Right third of the window:**  
-  - **Property Price Verdict:** **Under-priced / Average / Overpriced** (color-coded badges)  
-  - **Legal Rent Check:** **Conformant – Low / Conformant – High / Non-conformant** (with visual indicators)  
+**Web Application Layout (UX requirement):**
+- **Browser-based interface** accessible at `http://localhost:3000` (frontend) with modern, responsive design
+- **Right third of the window:**
+  - **Detected Location** badge showing city/village from postal code (e.g., "Thonon-les-Bains" from 74200)
+  - **Property Price Verdict:** **Under-priced / Average / Overpriced** (color-coded badges)
+  - **Legal Rent Check:** Displays either:
+    - **Legal rent control**: **Conformant – Low / Conformant – High / Non-conformant** with legal min/max labels
+    - **Market estimate**: Blue banner + **Within Market Range / Above / Below** with typical min/max labels + yellow guidance
   - **Strategy Fit badges:** Top 3 strategy profiles (0–100 with short reason codes) displayed as interactive cards  
-- **Middle column:** **Interactive Analytics Dashboard** with real-time updates:  
-  - **Financial metrics** displayed in clean, readable cards with tooltips  
-  - **Interactive cash-flow charts** (D3.js/Chart.js) with zoom and hover details  
-  - **Expandable tables** for year-by-year breakdowns  
+- **Middle column:** **Interactive Analytics Dashboard** with real-time updates:
+  - **Financial metrics** displayed in clean, readable cards with tooltips
+  - **Interactive cash-flow charts** (Chart.js) showing annual cash flow and cumulative totals with **clear mortgage payoff indication** (year 21+ shows €0 mortgage payment)
+  - **Customizable cash flow table** (1-50 years) showing:
+    - Rental income, operating expenses, mortgage payment, NOI, cash flow, cumulative CF
+    - Property value appreciation by year based on local market data
+    - Equity buildup over time
+    - **Transition to positive cash flow** after mortgage is paid off (clearly visible in table)
+  - **Property appreciation footnote** with data source and rate
   - **Risk assessment widgets** for environmental and crime data  
 - **Left column:** **Input Panel and Chat Interface**:  
   - **AI Chatbot** (linked to agents) at the top with conversation history  
@@ -109,10 +122,17 @@ Pydantic AI documentation: https://ai.pydantic.dev/
   \( \text{Fit} = \sum_i w_i \cdot s_i^{\text{norm}} \)  
   with profile-specific weights and normalized metric scores.
 
-- **Paris Encadrement des Loyers (Legal-rent):**  
-  - **Reference Rent** and **Ceiling (majoré)** depend on zone, period (e.g., 2025S1), furnished/unfurnished, and surface.  
-  - **Legal Max Monthly Rent** = (Ceiling €/m² × Surface) + **Complément de loyer** if strictly justified; **Status** = Below / Within / Above; **Annual Legal Rent** = Monthly × 12.  
-  - **Verdict labels** displayed in UI: **Conformant – Low / Conformant – High / Non-conformant**.
+- **Nationwide Rent Control & Market Estimates:**
+  - **Legal rent control** (encadrement des loyers) for:
+    - **Paris**: All 20 arrondissements with quartier-level variations (2024-2025 data)
+    - **Major cities**: Lyon (9 arr.), Marseille (10 arr.), Bordeaux, Toulouse, Nice, Lille, Montpellier, Strasbourg, Nantes, Rennes, Grenoble, Toulon, Angers
+  - **Regional market estimates** for areas without legal control:
+    - All 13 French regions with typical min/median/max rent per m²
+    - Department-to-region mapping for accurate fallback
+    - National average as final fallback (€9.0-14.0/m², median €11.5)
+  - **UI differentiation**:
+    - **Legal control**: "Legal Min/Max" labels + compliance verdicts (**Conformant – Low / High / Non-conformant**)
+    - **Market estimate**: Blue banner warning + "Typical Min/Max" labels + market range verdicts (**Within Market Range / Above / Below**)
 
 - **Now-Cast Valuation (deterministic):**  
   \( \text{Now-Cast} = \text{DVF Median (matched comps)} \times (1+\Delta_{\text{market}}) \times (1+\Delta_{\text{listing}}) \)  

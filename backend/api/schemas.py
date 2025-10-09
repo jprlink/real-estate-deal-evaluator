@@ -21,6 +21,20 @@ class PropertyEvaluationRequest(BaseModel):
     annual_rate: float = Field(..., ge=0, le=1)
     loan_term: int = Field(..., ge=1, le=50)
     monthly_rent: float = Field(..., gt=0)
+    projection_years: int = Field(default=30, ge=1, le=50)  # Number of years to project cash flow
+
+
+class CashFlowYear(BaseModel):
+    """Cash flow data for a single year."""
+    year: int
+    rental_income: float
+    operating_expenses: float
+    mortgage_payment: float
+    noi: float
+    cash_flow: float
+    cumulative_cash_flow: float
+    property_value: float
+    equity: float
 
 
 class FinancialMetrics(BaseModel):
@@ -33,6 +47,8 @@ class FinancialMetrics(BaseModel):
     irr: float
     price_per_m2: float
     ltv: float
+    appreciation_rate: Optional[float] = None  # Annual appreciation rate
+    appreciation_rate_display: Optional[str] = None  # Display format (e.g., "+2.3%")
 
 
 class StrategyFit(BaseModel):
@@ -43,6 +59,17 @@ class StrategyFit(BaseModel):
     cons: List[str]
 
 
+class RentBand(BaseModel):
+    """Rent control band information for legal compliance or market estimate."""
+    min_rent: float  # Minimum rent per m² (legal control or market estimate)
+    max_rent: float  # Maximum rent per m² (legal control or market estimate)
+    median_rent: float  # Median/reference rent per m²
+    property_rent_per_m2: float  # Actual rent per m² for this property
+    is_compliant: bool  # Whether property rent is within limits
+    compliance_percentage: float  # Where property rent sits in the band (0-100%)
+    is_estimate: bool = False  # True if using regional estimate, False if legal control
+
+
 class PropertyEvaluationResponse(BaseModel):
     """Response schema for property evaluation."""
     verdict: str  # "BUY", "CAUTION", "PASS"
@@ -51,6 +78,10 @@ class PropertyEvaluationResponse(BaseModel):
     metrics: FinancialMetrics
     strategy_fits: List[StrategyFit]
     summary: str
+    cash_flow_projections: List[CashFlowYear] = []  # Customizable-year cash flow projections
+    appreciation_source: Optional[str] = None  # Data source for appreciation rate
+    rent_band: Optional[RentBand] = None  # Legal rent band information
+    city: Optional[str] = None  # Detected city from postal code
 
 
 class ResearchRequest(BaseModel):

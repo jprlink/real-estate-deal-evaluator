@@ -3,8 +3,10 @@ Property evaluation API endpoints.
 """
 
 from fastapi import APIRouter, HTTPException
-from backend.api.schemas import PropertyEvaluationRequest, PropertyEvaluationResponse, FinancialMetrics, StrategyFit
-from backend.calculations import financial, mortgage, strategy_fit
+from backend.api.schemas import (PropertyEvaluationRequest, PropertyEvaluationResponse,
+                                FinancialMetrics, StrategyFit, CashFlowYear, RentBand)
+from backend.calculations import financial, mortgage, strategy_fit, cashflow
+from backend.data import appreciation_rates, postal_codes, rent_control
 import logging
 
 router = APIRouter()
@@ -27,10 +29,14 @@ async def evaluate_property(request: PropertyEvaluationRequest):
             years=request.loan_term
         )
 
+        # Estimate monthly operating expenses (property tax, insurance, maintenance, HOA)
+        # Typical: 20-30% of rental income, using 25%
+        monthly_opex = request.monthly_rent * 0.25
+        annual_oe = monthly_opex * 12
+
         # Calculate financial metrics
         gmi = financial.gross_monthly_income(request.monthly_rent)
         vcl = financial.vacancy_credit_loss(gmi, 0.05)  # 5% vacancy rate
-        annual_oe = 6000  # Placeholder operating expenses
         noi = financial.noi_calculation(gmi, vcl, annual_oe)
 
         ads = financial.annual_debt_service(monthly_payment)
@@ -44,9 +50,70 @@ async def evaluate_property(request: PropertyEvaluationRequest):
         price_per_m2 = request.price / request.surface
         ltv = financial.ltv_ratio(request.loan_amount, request.price)
 
-        # Simple IRR calculation (placeholder - would use full cash flow analysis)
-        # For now, approximate with cash-on-cash
-        estimated_irr = coc * 0.8  # Rough approximation
+        # Get appreciation rate for the postal code
+        appreciation_rate = appreciation_rates.get_appreciation_rate(
+            postal_code=request.postal_code,
+            forward_looking=True
+        )
+        appreciation_rate_display = appreciation_rates.get_appreciation_rate_display(
+            postal_code=request.postal_code,
+            forward_looking=True
+        )
+        appreciation_source = appreciation_rates.get_appreciation_source()
+
+        # Calculate amortization schedule for cash flow projections
+        amortization_schedule = mortgage.amortization_schedule(
+            principal=request.loan_amount,
+            annual_rate=request.annual_rate,
+            years=request.loan_term
+        )
+
+        # Calculate cash flow projections with appreciation (user-defined years)
+        projections = cashflow.calculate_cash_flow_projection(
+            initial_property_value=request.price,
+            monthly_rent=request.monthly_rent,
+            monthly_operating_expenses=monthly_opex,
+            monthly_mortgage_payment=monthly_payment,
+            loan_amortization_schedule=amortization_schedule,
+            appreciation_rate=appreciation_rate,
+            years=request.projection_years
+        )
+
+        # Calculate IRR from actual cash flows
+        initial_equity = request.down_payment
+        cash_flows = [-initial_equity]  # Initial investment (negative)
+        for p in projections:
+            cash_flows.append(p.cash_flow)
+
+        # Add sale proceeds to final year
+        sale_result = cashflow.calculate_total_return_with_sale(
+            projections=projections,
+            initial_equity=initial_equity,
+            selling_costs_rate=0.08
+        )
+        cash_flows[-1] += sale_result["net_sale_proceeds"]
+
+        # Calculate IRR from cash flows
+        from backend.calculations.irr_npv import irr_calculation
+        estimated_irr = irr_calculation(cash_flows)
+        if estimated_irr != estimated_irr:  # Check for NaN
+            estimated_irr = coc * 0.8  # Fallback to approximation
+
+        # Convert projections to response format
+        cash_flow_years = [
+            CashFlowYear(
+                year=p.year,
+                rental_income=p.rental_income,
+                operating_expenses=p.operating_expenses,
+                mortgage_payment=p.mortgage_payment,
+                noi=p.noi,
+                cash_flow=p.cash_flow,
+                cumulative_cash_flow=p.cumulative_cash_flow,
+                property_value=p.property_value,
+                equity=p.equity
+            )
+            for p in projections
+        ]
 
         # Calculate strategy fits
         tmc = financial.total_monthly_cost(monthly_payment, 200, 100)  # Placeholder charges
@@ -77,14 +144,32 @@ async def evaluate_property(request: PropertyEvaluationRequest):
         else:
             price_verdict = "Overpriced"
 
-        # Legal rent status (simplified - would use actual rent control data)
-        rent_per_m2 = request.monthly_rent / request.surface
-        if rent_per_m2 < 30:
-            legal_rent_status = "Conformant – Low"
-        elif rent_per_m2 <= 35:
-            legal_rent_status = "Conformant – High"
+        # Get detected city from postal code
+        detected_city = postal_codes.get_city_from_postal_code(request.postal_code)
+
+        # Legal rent status using real rent control data
+        rent_compliance = rent_control.check_rent_compliance(
+            postal_code=request.postal_code,
+            monthly_rent=request.monthly_rent,
+            surface=request.surface
+        )
+
+        if rent_compliance:
+            legal_rent_status = rent_compliance["verdict"]
+            rent_band = RentBand(
+                min_rent=rent_compliance["min_rent"],
+                max_rent=rent_compliance["max_rent"],
+                median_rent=rent_compliance["median_rent"],
+                property_rent_per_m2=rent_compliance["property_rent_per_m2"],
+                is_compliant=rent_compliance["is_compliant"],
+                compliance_percentage=rent_compliance["compliance_percentage"],
+                is_estimate=rent_compliance.get("is_estimate", False)
+            )
         else:
-            legal_rent_status = "Non-conformant"
+            # Not in rent-controlled zone
+            rent_per_m2 = request.monthly_rent / request.surface
+            legal_rent_status = "No rent control in this area"
+            rent_band = None
 
         # Build response
         metrics = FinancialMetrics(
@@ -95,7 +180,9 @@ async def evaluate_property(request: PropertyEvaluationRequest):
             cash_on_cash=coc,
             irr=estimated_irr,
             price_per_m2=price_per_m2,
-            ltv=ltv
+            ltv=ltv,
+            appreciation_rate=appreciation_rate,
+            appreciation_rate_display=appreciation_rate_display
         )
 
         strategy_fits_response = [
@@ -116,7 +203,11 @@ async def evaluate_property(request: PropertyEvaluationRequest):
             legal_rent_status=legal_rent_status,
             metrics=metrics,
             strategy_fits=strategy_fits_response,
-            summary=summary
+            summary=summary,
+            cash_flow_projections=cash_flow_years,
+            appreciation_source=appreciation_source,
+            rent_band=rent_band,
+            city=detected_city
         )
 
     except Exception as e:

@@ -1,5 +1,5 @@
 import React from 'react';
-import { TrendingUp, DollarSign, BarChart3, PieChart, AlertCircle } from 'lucide-react';
+import { TrendingUp, DollarSign, BarChart3, PieChart, AlertCircle, Info } from 'lucide-react';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -11,6 +11,7 @@ import {
   Tooltip,
   Legend
 } from 'chart.js';
+import CashFlowTable from './CashFlowTable';
 
 ChartJS.register(
   CategoryScale,
@@ -46,17 +47,24 @@ const MiddlePanel = ({ evaluationResult, propertyData, loading }) => {
     );
   }
 
-  const { metrics } = evaluationResult;
+  const { metrics, cash_flow_projections, appreciation_source } = evaluationResult;
 
-  // Mock cash flow data for chart
+  // Use real cash flow data from backend
   const cashFlowData = {
-    labels: Array.from({ length: 10 }, (_, i) => `Year ${i + 1}`),
+    labels: cash_flow_projections?.map((cf) => `Year ${cf.year}`) || Array.from({ length: 10 }, (_, i) => `Year ${i + 1}`),
     datasets: [
       {
         label: 'Annual Cash Flow',
-        data: Array.from({ length: 10 }, () => Math.random() * 10000 + 5000),
+        data: cash_flow_projections?.map((cf) => cf.cash_flow) || Array.from({ length: 10 }, () => Math.random() * 10000 + 5000),
         borderColor: 'rgb(14, 165, 233)',
         backgroundColor: 'rgba(14, 165, 233, 0.1)',
+        tension: 0.4
+      },
+      {
+        label: 'Cumulative Cash Flow',
+        data: cash_flow_projections?.map((cf) => cf.cumulative_cash_flow) || [],
+        borderColor: 'rgb(34, 197, 94)',
+        backgroundColor: 'rgba(34, 197, 94, 0.1)',
         tension: 0.4
       }
     ]
@@ -144,7 +152,32 @@ const MiddlePanel = ({ evaluationResult, propertyData, loading }) => {
         <div className="h-64">
           <Line data={cashFlowData} options={chartOptions} />
         </div>
+
+        {/* Appreciation Rate Footnote */}
+        {metrics.appreciation_rate_display && (
+          <div className="mt-3 flex items-start space-x-2 text-xs text-gray-600 bg-blue-50 p-3 rounded-lg">
+            <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium text-gray-700">
+                Property appreciation: {metrics.appreciation_rate_display} per year
+              </p>
+              {appreciation_source && (
+                <p className="mt-1">{appreciation_source}</p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Cash Flow Table */}
+      {cash_flow_projections && cash_flow_projections.length > 0 && (
+        <div className="card">
+          <CashFlowTable
+            cashFlowData={cash_flow_projections}
+            appreciationRate={metrics.appreciation_rate}
+          />
+        </div>
+      )}
 
       {/* Summary */}
       <div className="card">

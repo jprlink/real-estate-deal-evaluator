@@ -11,95 +11,18 @@ import logging
 
 def get_city_from_postal_code(postal_code: str) -> str:
     """
-    Infer city name from French postal code.
-
-    Returns the most common city name associated with the postal code,
-    not the department name.
+    Get official city name from French postal code using official database.
 
     Args:
         postal_code: 5-digit French postal code
 
     Returns:
-        str: City name or empty string if unknown
+        str: Official city name or empty string if unknown
     """
-    if not postal_code or len(postal_code) != 5:
-        return ""
+    from backend.data.postal_codes import get_city_from_postal_code as get_city
 
-    # For Paris arrondissements (750XX)
-    if postal_code.startswith("750"):
-        return "Paris"
-
-    # Major cities with direct mapping
-    dept = postal_code[:2]
-
-    # Île-de-France region - map to major cities
-    idf_cities = {
-        "92": {  # Hauts-de-Seine
-            "920": "Nanterre", "921": "Neuilly-sur-Seine", "922": "Boulogne-Billancourt",
-            "923": "Levallois-Perret", "924": "Clichy", "925": "Colombes", "926": "Courbevoie",
-            "927": "Asnières-sur-Seine", "928": "Issy-les-Moulineaux", "929": "Rueil-Malmaison"
-        },
-        "93": {  # Seine-Saint-Denis
-            "930": "Bobigny", "931": "Saint-Denis", "932": "Montreuil", "933": "Aubervilliers",
-            "934": "Pantin", "935": "Bondy", "936": "Noisy-le-Sec"
-        },
-        "94": {  # Val-de-Marne
-            "940": "Créteil", "941": "Vitry-sur-Seine", "942": "Ivry-sur-Seine",
-            "943": "Maisons-Alfort", "944": "Saint-Mandé", "945": "Vincennes"
-        },
-        "91": {  # Essonne
-            "910": "Évry", "911": "Corbeil-Essonnes", "912": "Massy", "913": "Palaiseau"
-        },
-        "78": {  # Yvelines
-            "780": "Versailles", "781": "Saint-Germain-en-Laye", "782": "Sartrouville"
-        },
-        "95": {  # Val-d'Oise
-            "950": "Cergy", "951": "Argenteuil", "952": "Sarcelles", "953": "Pontoise"
-        },
-        "77": {  # Seine-et-Marne
-            "770": "Melun", "771": "Meaux", "772": "Chelles", "773": "Fontainebleau"
-        }
-    }
-
-    # Check for specific city match in Île-de-France
-    if dept in idf_cities:
-        prefix = postal_code[:3]
-        if prefix in idf_cities[dept]:
-            return idf_cities[dept][prefix]
-        # Return first major city in department if no specific match
-        return next(iter(idf_cities[dept].values()))
-
-    # Major French cities outside Paris region
-    major_cities = {
-        "13": "Marseille",
-        "69": "Lyon",
-        "31": "Toulouse",
-        "33": "Bordeaux",
-        "59": "Lille",
-        "44": "Nantes",
-        "67": "Strasbourg",
-        "35": "Rennes",
-        "34": "Montpellier",
-        "06": "Nice",
-        "76": "Rouen",
-        "44": "Nantes",
-        "21": "Dijon",
-        "63": "Clermont-Ferrand",
-        "83": "Toulon",
-        "38": "Grenoble",
-        "49": "Angers",
-        "54": "Nancy",
-        "57": "Metz",
-        "29": "Brest",
-        "87": "Limoges",
-        "25": "Besançon",
-        "45": "Orléans",
-        "68": "Mulhouse",
-        "62": "Calais",
-        "80": "Amiens"
-    }
-
-    return major_cities.get(dept, "")
+    city = get_city(postal_code)
+    return city if city else ""
 
 
 def calculate_notary_fees(price: float) -> float:
