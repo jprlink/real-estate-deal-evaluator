@@ -15,6 +15,8 @@ const RentScaleVisualization = ({ rentBand }) => {
     max_rent,
     median_rent,
     property_rent_per_m2,
+    total_monthly_rent,
+    surface,
     is_compliant,
     compliance_percentage,
     is_estimate = false
@@ -124,9 +126,12 @@ const RentScaleVisualization = ({ rentBand }) => {
 
         {/* Current Rent Display */}
         <div className="text-center">
-          <p className="text-sm text-gray-600">Your Proposed Rent</p>
+          <p className="text-sm text-gray-600">Your Input Rent</p>
           <p className={`text-2xl font-bold ${getStatusColor()}`}>
             €{property_rent_per_m2.toFixed(1)}/m²
+          </p>
+          <p className="text-base font-semibold text-gray-700 mt-1">
+            €{Math.round(total_monthly_rent).toLocaleString()}/month ({Math.round(surface)}m²)
           </p>
           <p className="text-xs text-gray-500 mt-1">
             {is_compliant ? (
@@ -153,12 +158,11 @@ const RentScaleVisualization = ({ rentBand }) => {
           <p className="text-xs text-red-700">
             {property_rent_per_m2 > max_rent ? (
               <>
-                Reduce rent to comply with legal maximum (€{max_rent.toFixed(1)}/m²).
-                Recommended rent: €{(max_rent * (property_rent_per_m2 / property_rent_per_m2 < max_rent ? property_rent_per_m2 : max_rent)).toFixed(0)}/month
+                Reduce rent to comply with legal maximum (€{max_rent.toFixed(1)}/m² = €{Math.round(max_rent * surface).toLocaleString()}/month).
               </>
             ) : (
               <>
-                Increase rent to comply with legal minimum (€{min_rent.toFixed(1)}/m²).
+                Increase rent to comply with legal minimum (€{min_rent.toFixed(1)}/m² = €{Math.round(min_rent * surface).toLocaleString()}/month).
               </>
             )}
           </p>

@@ -16,7 +16,8 @@ const PropertyInputForm = ({ onSubmit, loading, parsedData }) => {
     annual_rate: '0.03',
     loan_term: '20',
     monthly_rent: '',
-    projection_years: '30'  // Default 30 years
+    projection_years: '30',  // Default 30 years
+    renovation_costs: '0'  // Optional renovation costs
   });
 
   // Auto-fill form when parsed data is received
@@ -64,7 +65,8 @@ const PropertyInputForm = ({ onSubmit, loading, parsedData }) => {
       annual_rate: parseFloat(formData.annual_rate),
       loan_term: parseInt(formData.loan_term),
       monthly_rent: parseFloat(formData.monthly_rent),
-      projection_years: parseInt(formData.projection_years) || 30
+      projection_years: parseInt(formData.projection_years) || 30,
+      renovation_costs: parseFloat(formData.renovation_costs) || 0
     };
 
     onSubmit(data);
@@ -241,6 +243,23 @@ const PropertyInputForm = ({ onSubmit, loading, parsedData }) => {
               required
             />
           </div>
+        </div>
+
+        <div className="mt-3">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Renovation Costs (€) - Optional
+          </label>
+          <input
+            type="number"
+            name="renovation_costs"
+            value={formData.renovation_costs}
+            onChange={handleChange}
+            placeholder="0"
+            className="input text-sm"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Costs for repairs/improvements before renting out
+          </p>
         </div>
 
         <div className="grid grid-cols-2 gap-3 mt-3">

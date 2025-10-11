@@ -155,18 +155,32 @@ The web application provides a modern, state-of-the-art interface with:
 - Comprehensive property input form
 - PDF upload for listing analysis
 - Real-time validation
+- Support for all French postal codes (101 departments)
 
 **Middle Panel - Analytics Dashboard**
-- Interactive financial metrics cards
-- 10-year cash flow projection chart
-- Year-by-year breakdown tables
-- Key performance indicators (DSCR, IRR, Cap Rate, CoC)
+- **Consolidated financial metrics display** with interactive tooltips
+  - Hover over any metric to see detailed formulas and explanations
+  - All 8 key metrics (DSCR, IRR, Cap Rate, CoC, NOI, LTV, Price/m², Monthly Mortgage) in one unified card
+- **Interactive cash flow projection chart** (Chart.js) with customizable timeframes (1-50 years)
+- **Compact scrollable cash flow table** showing first 5 years with sticky headers
+  - Gross rent, vacancy (5%), effective rent, operating expenses (25%)
+  - NOI, cash flow, cumulative cash flow, property value, equity
+- **Property appreciation tracking** with department-specific rates from Notaires de France
+- **Detailed assumptions panel** documenting all calculation parameters
 
 **Right Panel - Verdicts & Strategies**
 - **Investment Verdict**: BUY/CAUTION/PASS (color-coded)
+  - Based on DSCR thresholds (≥1.2 excellent, 1.0-1.2 caution, <1.0 pass)
 - **Price Verdict**: Under-priced/Average/Overpriced
-- **Legal Rent Status**: Compliance with Paris rent control
-- **Top 3 Investment Strategies** with pros/cons
+  - **DVF database integration**: Uses real French property transaction data
+  - Compares to median market price from recent sales (±30% surface similarity)
+  - ±10% tolerance for "Average" verdict
+- **Legal Rent Check**: Nationwide coverage
+  - Paris encadrement des loyers (legal rent control)
+  - Major cities rent control zones
+  - Market estimates for all other French regions
+  - Visual scale showing "Your Input Rent" vs. legal/market ranges
+- **Top 3 Investment Strategies** with detailed pros/cons scoring
 
 ### Technology Stack
 
@@ -411,8 +425,14 @@ pytest tests/backend/ -v --cov=backend --cov-report=term-missing
 ## 🔑 API Integration Status
 
 - ✅ **Brave Search**: Fully implemented, ready to use
-- 🚧 **DVF (Property Transactions)**: Stub implementation, needs API integration
-- 🚧 **Paris Rent Control**: Stub with placeholder data, needs API integration
+- ✅ **DVF (Property Transactions)**: Real API integration with data.gouv.fr APUR Île-de-France dataset
+  - Fetches recent sales (2 years) for comparable properties
+  - Surface filtering (±30%) for accurate comparisons
+  - Used for dynamic price verdict calculations
+- ✅ **Rent Control (Nationwide)**: Complete coverage for all French departments
+  - Paris encadrement des loyers (legal rent control)
+  - Major cities rent control zones
+  - Regional market estimates for remaining areas
 - 🚧 **Géorisques**: Stub implementation, needs API integration
 - 🚧 **Crime Data**: Stub implementation, needs data.gouv.fr integration
 - 🚧 **Gmail**: Stub implementation, needs OAuth setup and google-api-python-client

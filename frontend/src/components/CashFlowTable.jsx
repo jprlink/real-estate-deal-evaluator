@@ -36,35 +36,41 @@ const CashFlowTable = ({ cashFlowData, appreciationRate }) => {
       </div>
 
       {/* Scrollable Table */}
-      <div className="overflow-x-auto border border-gray-200 rounded-lg">
+      <div className="overflow-auto border border-gray-200 rounded-lg max-h-[340px]">
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+          <thead className="bg-gray-50 sticky top-0">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50">
+              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-10">
                 Year
               </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Rental Income
+              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Gross Rent
               </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Operating Expenses
+              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Vacancy (5%)
               </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Mortgage Payment
+              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Effective Rent
               </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                OpEx (25%)
+              </th>
+              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Mortgage
+              </th>
+              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 NOI
               </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider font-semibold">
+              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider font-semibold">
                 Cash Flow
               </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider font-semibold">
+              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider font-semibold">
                 Cumulative CF
               </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Property Value
               </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Equity
               </th>
             </tr>
@@ -72,35 +78,41 @@ const CashFlowTable = ({ cashFlowData, appreciationRate }) => {
           <tbody className="bg-white divide-y divide-gray-200">
             {cashFlowData.map((row) => (
               <tr key={row.year} className="hover:bg-gray-50">
-                <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white">
+                <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white">
                   {row.year}
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 text-right">
+                <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-700 text-right">
                   {formatCurrency(row.rental_income)}
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 text-right">
+                <td className="px-3 py-2 whitespace-nowrap text-sm text-red-600 text-right">
+                  {formatCurrency(row.vacancy_loss)}
+                </td>
+                <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 font-medium text-right">
+                  {formatCurrency(row.effective_rental_income)}
+                </td>
+                <td className="px-3 py-2 whitespace-nowrap text-sm text-red-600 text-right">
                   {formatCurrency(row.operating_expenses)}
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 text-right">
+                <td className="px-3 py-2 whitespace-nowrap text-sm text-red-600 text-right">
                   {formatCurrency(row.mortgage_payment)}
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 text-right">
+                <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 font-medium text-right">
                   {formatCurrency(row.noi)}
                 </td>
-                <td className={`px-4 py-3 whitespace-nowrap text-sm font-semibold text-right ${
+                <td className={`px-3 py-2 whitespace-nowrap text-sm font-semibold text-right ${
                   row.cash_flow >= 0 ? 'text-green-600' : 'text-red-600'
                 }`}>
                   {formatCurrency(row.cash_flow)}
                 </td>
-                <td className={`px-4 py-3 whitespace-nowrap text-sm font-semibold text-right ${
+                <td className={`px-3 py-2 whitespace-nowrap text-sm font-semibold text-right ${
                   row.cumulative_cash_flow >= 0 ? 'text-green-600' : 'text-red-600'
                 }`}>
                   {formatCurrency(row.cumulative_cash_flow)}
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 text-right">
+                <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-700 text-right">
                   {formatCurrency(row.property_value)}
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 text-right font-medium">
+                <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-700 text-right font-medium">
                   {formatCurrency(row.equity)}
                 </td>
               </tr>
@@ -112,7 +124,7 @@ const CashFlowTable = ({ cashFlowData, appreciationRate }) => {
       {/* Summary Row */}
       <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
         <div>
-          <p className="text-xs text-gray-600">Total Cash Flow (10Y)</p>
+          <p className="text-xs text-gray-600">Total Cash Flow ({cashFlowData.length}Y)</p>
           <p className={`text-lg font-bold ${
             cashFlowData[cashFlowData.length - 1]?.cumulative_cash_flow >= 0
               ? 'text-green-600'

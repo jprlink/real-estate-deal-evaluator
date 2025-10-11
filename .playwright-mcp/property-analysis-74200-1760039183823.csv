@@ -1,0 +1,92 @@
+France Real Estate Investment Analysis Report
+Generated: 09/10/2025, 21:46:23
+
+PROPERTY DETAILS
+Address,Thonon-les-Bains
+Postal Code,74200
+Location,Thonon-les-Bains
+Price,€250,000
+Surface,45 m²
+Price per m²,€5556
+Rooms,2
+Bedrooms,1
+
+FINANCING
+Down Payment,€50,000
+Loan Amount,€200,000
+Interest Rate,3.00%
+Loan Term,20 years
+Monthly Payment,€1109
+LTV Ratio,80%
+
+INVESTMENT ANALYSIS
+Investment Verdict,PASS
+Price Verdict,Under-priced
+Legal Rent Status,Above typical market range
+
+FINANCIAL METRICS
+Monthly Rent,€1,100
+NOI (Annual),€9240
+DSCR,0.69
+Cap Rate,3.70%
+Cash-on-Cash Return,-8.14%
+IRR,6.28%
+Property Appreciation Rate,+2.0%
+
+RENT ANALYSIS
+Type,Market Estimate
+Property Rent per m²,€24.44
+Typical Min,€10.00/m²
+Median,€13.00/m²
+Typical Max,€16.00/m²
+Compliant,No
+
+TOP INVESTMENT STRATEGIES
+1. Value-Add / déficit foncier (Score: 55)
+   Pros: Déficit foncier: Deduct renovation costs from income; Post-renovation: Higher rents and property value; Forced appreciation through improvements
+   Cons: DPE D: Limited energy upgrade value; Requires upfront capital for renovations; Construction risk and timeline uncertainty; No rental income during works; Requires project management expertise
+2. Owner-occupier (Score: 52.72414412876476)
+   Pros: Build equity through principal payments; Stable housing costs (fixed-rate mortgage)
+   Cons: Monthly cost €309 more than renting; Lower liquidity vs renting; Maintenance and repair responsibilities
+3. Location nue (unfurnished) (Score: 21.410473346810686)
+   Pros: 30% flat tax abatement (micro-foncier); Long-term tenant stability
+   Cons: Negative cash flow (DSCR: 0.69); Lower rent vs furnished (typically 20-30% less); Tenant protections favor long leases
+
+CASH FLOW PROJECTION (30 YEARS)
+Year,Rental Income,Operating Expenses,Mortgage Payment,NOI,Cash Flow,Cumulative CF,Property Value,Equity
+1,€13200,€3300,€13310,€9900,€-3410,€-3410,€255000,€62412
+2,€13200,€3300,€13310,€9900,€-3410,€-6821,€260100,€75149
+3,€13200,€3300,€13310,€9900,€-3410,€-10231,€265302,€88220
+4,€13200,€3300,€13310,€9900,€-3410,€-13641,€270608,€101635
+5,€13200,€3300,€13310,€9900,€-3410,€-17052,€276020,€115403
+6,€13200,€3300,€13310,€9900,€-3410,€-20462,€281541,€129533
+7,€13200,€3300,€13310,€9900,€-3410,€-23872,€287171,€144035
+8,€13200,€3300,€13310,€9900,€-3410,€-27283,€292915,€158920
+9,€13200,€3300,€13310,€9900,€-3410,€-30693,€298773,€174197
+10,€13200,€3300,€13310,€9900,€-3410,€-34103,€304749,€189878
+11,€13200,€3300,€13310,€9900,€-3410,€-37514,€310844,€205974
+12,€13200,€3300,€13310,€9900,€-3410,€-40924,€317060,€222496
+13,€13200,€3300,€13310,€9900,€-3410,€-44334,€323402,€239456
+14,€13200,€3300,€13310,€9900,€-3410,€-47745,€329870,€256866
+15,€13200,€3300,€13310,€9900,€-3410,€-51155,€336467,€274738
+16,€13200,€3300,€13310,€9900,€-3410,€-54565,€343196,€293084
+17,€13200,€3300,€13310,€9900,€-3410,€-57976,€350060,€311919
+18,€13200,€3300,€13310,€9900,€-3410,€-61386,€357062,€331255
+19,€13200,€3300,€13310,€9900,€-3410,€-64797,€364203,€351106
+20,€13200,€3300,€13310,€9900,€-3410,€-68207,€371487,€371487
+21,€13200,€3300,€0,€9900,€9900,€-58307,€378917,€378917
+22,€13200,€3300,€0,€9900,€9900,€-48407,€386495,€386495
+23,€13200,€3300,€0,€9900,€9900,€-38507,€394225,€394225
+24,€13200,€3300,€0,€9900,€9900,€-28607,€402109,€402109
+25,€13200,€3300,€0,€9900,€9900,€-18707,€410151,€410151
+26,€13200,€3300,€0,€9900,€9900,€-8807,€418355,€418355
+27,€13200,€3300,€0,€9900,€9900,€1093,€426722,€426722
+28,€13200,€3300,€0,€9900,€9900,€10993,€435256,€435256
+29,€13200,€3300,€0,€9900,€9900,€20893,€443961,€443961
+30,€13200,€3300,€0,€9900,€9900,€30793,€452840,€452840
+
+SUMMARY
+Property at Thonon-les-Bains: DSCR 0.69, Cap Rate 3.7%, IRR 6.3%. Verdict: PASS
+
+DATA SOURCES
+Based on Notaires de France Q4 2024 / Q1 2025 market data. Forward projections include stabilization adjustment (+1.5%). Actual rates may vary by neighborhood and property type.

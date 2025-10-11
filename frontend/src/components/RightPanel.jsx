@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle, AlertTriangle, XCircle, Award, TrendingUp, MapPin } from 'lucide-react';
+import { CheckCircle, AlertTriangle, XCircle, Award, TrendingUp } from 'lucide-react';
 import RentScaleVisualization from './RentScaleVisualization';
 
 const RightPanel = ({ evaluationResult, loading }) => {
@@ -19,23 +19,10 @@ const RightPanel = ({ evaluationResult, loading }) => {
     );
   }
 
-  const { verdict, price_verdict, legal_rent_status, strategy_fits, rent_band, city } = evaluationResult;
+  const { verdict, price_verdict, legal_rent_status, strategy_fits, rent_band, price_source } = evaluationResult;
 
   return (
     <div className="space-y-4">
-      {/* Detected City */}
-      {city && (
-        <div className="card bg-primary-50 border-primary-200">
-          <div className="flex items-center space-x-2">
-            <MapPin className="w-5 h-5 text-primary-600" />
-            <div>
-              <p className="text-sm font-medium text-gray-700">Detected Location</p>
-              <p className="text-lg font-bold text-primary-600">{city}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Main Verdict */}
       <VerdictCard
         title="Investment Verdict"
@@ -56,9 +43,10 @@ const RightPanel = ({ evaluationResult, loading }) => {
           'Average': { color: 'blue', icon: TrendingUp, text: 'Market value' },
           'Overpriced': { color: 'red', icon: TrendingUp, text: 'Above market value' }
         }}
+        source={price_source}
       />
 
-      {/* Legal Rent Check with Scale */}
+      {/* Legal Rent Check */}
       <div className="card">
         <h3 className="text-lg font-semibold mb-4">Legal Rent Check</h3>
         <p className="text-sm font-medium text-gray-700 mb-3">{legal_rent_status}</p>
@@ -82,7 +70,7 @@ const RightPanel = ({ evaluationResult, loading }) => {
   );
 };
 
-const VerdictCard = ({ title, verdict, verdictConfig }) => {
+const VerdictCard = ({ title, verdict, verdictConfig, source }) => {
   const config = verdictConfig[verdict] || { color: 'gray', icon: AlertTriangle, text: verdict };
   const Icon = config.icon;
 
@@ -131,6 +119,9 @@ const VerdictCard = ({ title, verdict, verdictConfig }) => {
         </div>
       </div>
       <p className="text-xs text-gray-600 mt-2">{config.text}</p>
+      {source && (
+        <p className="text-xs text-gray-500 mt-2 italic border-t border-gray-200 pt-2">{source}</p>
+      )}
     </div>
   );
 };

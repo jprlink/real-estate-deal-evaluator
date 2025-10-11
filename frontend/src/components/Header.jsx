@@ -1,7 +1,7 @@
 import React from 'react';
-import { Building2, TrendingUp } from 'lucide-react';
+import { Building2, TrendingUp, Download } from 'lucide-react';
 
-const Header = () => {
+const Header = ({ onExportReport, hasData = false }) => {
   return (
     <header className="bg-white border-b border-gray-200 shadow-sm">
       <div className="container mx-auto px-4 py-4">
@@ -25,8 +25,14 @@ const Header = () => {
               <TrendingUp className="w-4 h-4 text-primary-600" />
               <span>60-Second Verdicts</span>
             </div>
-            <button className="btn-primary">
-              Export Report
+            <button
+              className={`btn-primary flex items-center space-x-2 ${!hasData ? 'opacity-50 cursor-not-allowed' : ''}`}
+              onClick={onExportReport}
+              disabled={!hasData}
+              title={!hasData ? 'Analyze a property first' : 'Export analysis report as CSV'}
+            >
+              <Download className="w-4 h-4" />
+              <span>Export Report</span>
             </button>
           </div>
         </div>

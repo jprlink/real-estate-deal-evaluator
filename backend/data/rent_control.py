@@ -396,6 +396,8 @@ def check_rent_compliance(
         "max_rent": max_rent,
         "median_rent": median_rent,
         "property_rent_per_m2": property_rent_per_m2,
+        "total_monthly_rent": monthly_rent,
+        "surface": surface,
         "is_compliant": is_compliant,
         "compliance_percentage": compliance_percentage,
         "verdict": verdict,

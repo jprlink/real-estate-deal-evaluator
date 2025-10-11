@@ -22,12 +22,15 @@ class PropertyEvaluationRequest(BaseModel):
     loan_term: int = Field(..., ge=1, le=50)
     monthly_rent: float = Field(..., gt=0)
     projection_years: int = Field(default=30, ge=1, le=50)  # Number of years to project cash flow
+    renovation_costs: float = Field(default=0, ge=0)  # Optional renovation costs before renting
 
 
 class CashFlowYear(BaseModel):
     """Cash flow data for a single year."""
     year: int
     rental_income: float
+    vacancy_loss: float
+    effective_rental_income: float
     operating_expenses: float
     mortgage_payment: float
     noi: float
@@ -65,9 +68,23 @@ class RentBand(BaseModel):
     max_rent: float  # Maximum rent per m² (legal control or market estimate)
     median_rent: float  # Median/reference rent per m²
     property_rent_per_m2: float  # Actual rent per m² for this property
+    total_monthly_rent: float  # Total monthly rent in euros
+    surface: float  # Property surface in m²
     is_compliant: bool  # Whether property rent is within limits
     compliance_percentage: float  # Where property rent sits in the band (0-100%)
     is_estimate: bool = False  # True if using regional estimate, False if legal control
+
+
+class PurchaseCosts(BaseModel):
+    """Detailed breakdown of French property purchase costs (frais d'acquisition)."""
+    down_payment: float  # Initial equity payment
+    renovation_costs: float  # Costs for repairs/improvements
+    registration_duties: float  # Droits d'enregistrement (transfer taxes) ~5.8%
+    notaire_fees: float  # Actual notaire professional fees ~1%
+    disbursements: float  # Administrative costs ~0.4%
+    mortgage_fees: float  # Additional fees if mortgage ~0.4%
+    total_fees: float  # Total of all fees (excluding down payment and renovation)
+    total_cash_required: float  # Total cash needed at closing
 
 
 class PropertyEvaluationResponse(BaseModel):
@@ -82,6 +99,8 @@ class PropertyEvaluationResponse(BaseModel):
     appreciation_source: Optional[str] = None  # Data source for appreciation rate
     rent_band: Optional[RentBand] = None  # Legal rent band information
     city: Optional[str] = None  # Detected city from postal code
+    price_source: Optional[str] = None  # Data source for price verdict (DVF or fallback)
+    purchase_costs: Optional[PurchaseCosts] = None  # Detailed breakdown of purchase costs
 
 
 class ResearchRequest(BaseModel):

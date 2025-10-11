@@ -4,7 +4,7 @@ Property evaluation API endpoints.
 
 from fastapi import APIRouter, HTTPException
 from backend.api.schemas import (PropertyEvaluationRequest, PropertyEvaluationResponse,
-                                FinancialMetrics, StrategyFit, CashFlowYear, RentBand)
+                                FinancialMetrics, StrategyFit, CashFlowYear, RentBand, PurchaseCosts)
 from backend.calculations import financial, mortgage, strategy_fit, cashflow
 from backend.data import appreciation_rates, postal_codes, rent_control
 import logging
@@ -68,27 +68,44 @@ async def evaluate_property(request: PropertyEvaluationRequest):
             years=request.loan_term
         )
 
+        # Calculate detailed purchase costs BEFORE cashflow projection
+        purchase_price = request.price
+        has_mortgage = request.loan_amount > 0
+        costs_breakdown = cashflow.calculate_french_purchase_costs(purchase_price, has_mortgage)
+        total_purchase_fees = costs_breakdown["total"]
+
         # Calculate cash flow projections with appreciation (user-defined years)
+        # Use same vacancy rate as DSCR calculation for consistency
+        VACANCY_RATE = 0.05  # 5% vacancy & credit loss
+
+        # Include renovation costs in total property value
+        total_property_value = request.price + request.renovation_costs
+
         projections = cashflow.calculate_cash_flow_projection(
-            initial_property_value=request.price,
+            initial_property_value=total_property_value,
             monthly_rent=request.monthly_rent,
             monthly_operating_expenses=monthly_opex,
             monthly_mortgage_payment=monthly_payment,
             loan_amortization_schedule=amortization_schedule,
             appreciation_rate=appreciation_rate,
-            years=request.projection_years
+            vacancy_rate=VACANCY_RATE,
+            years=request.projection_years,
+            down_payment=request.down_payment,
+            renovation_costs=request.renovation_costs,
+            purchase_fees=total_purchase_fees
         )
 
         # Calculate IRR from actual cash flows
-        initial_equity = request.down_payment
-        cash_flows = [-initial_equity]  # Initial investment (negative)
-        for p in projections:
-            cash_flows.append(p.cash_flow)
+        # Note: projections already include Year 0 with all purchase costs
+        cash_flows = [p.cash_flow for p in projections]
 
         # Add sale proceeds to final year
+        # Total cash required = down payment + renovation + all purchase fees
+        total_cash_required = request.down_payment + request.renovation_costs + total_purchase_fees
+
         sale_result = cashflow.calculate_total_return_with_sale(
             projections=projections,
-            initial_equity=initial_equity,
+            initial_equity=total_cash_required,
             selling_costs_rate=0.08
         )
         cash_flows[-1] += sale_result["net_sale_proceeds"]
@@ -104,6 +121,8 @@ async def evaluate_property(request: PropertyEvaluationRequest):
             CashFlowYear(
                 year=p.year,
                 rental_income=p.rental_income,
+                vacancy_loss=p.vacancy_loss,
+                effective_rental_income=p.effective_rental_income,
                 operating_expenses=p.operating_expenses,
                 mortgage_payment=p.mortgage_payment,
                 noi=p.noi,
@@ -136,16 +155,73 @@ async def evaluate_property(request: PropertyEvaluationRequest):
         else:
             verdict = "PASS"
 
-        # Price verdict (simplified - would use DVF data)
-        if price_per_m2 < 9500:
-            price_verdict = "Under-priced"
-        elif price_per_m2 <= 11000:
-            price_verdict = "Average"
-        else:
-            price_verdict = "Overpriced"
+        # Price verdict using DVF database
+        from backend.integrations.dvf import fetch_dvf_comps, calculate_median_price_per_m2
 
-        # Get detected city from postal code
+        # Get detected city from postal code (needed for logging)
         detected_city = postal_codes.get_city_from_postal_code(request.postal_code)
+
+        # Fetch comparable sales from DVF
+        dvf_comps = await fetch_dvf_comps(
+            address=request.address,
+            postal_code=request.postal_code,
+            surface=request.surface,
+            property_type="Appartement"  # TODO: Could be inferred from property characteristics
+        )
+
+        price_source = None
+        if dvf_comps and len(dvf_comps) >= 3:  # Need at least 3 comps for reliable comparison
+            median_market_price = calculate_median_price_per_m2(dvf_comps)
+            price_diff_pct = ((price_per_m2 - median_market_price) / median_market_price) * 100
+
+            if price_diff_pct < -10:
+                price_verdict = "Under-priced"
+            elif price_diff_pct <= 10:
+                price_verdict = "Average"
+            else:
+                price_verdict = "Overpriced"
+
+            price_source = f"Based on {len(dvf_comps)} comparable sales from DVF database (Demandes de Valeurs Foncières). Median market price: €{median_market_price:.0f}/m²."
+            logger.info(f"DVF analysis: median €{median_market_price:.0f}/m², property €{price_per_m2:.0f}/m² ({price_diff_pct:+.1f}%)")
+        else:
+            # Fallback to location-based market ranges if DVF data unavailable
+            logger.warning(f"Insufficient DVF data ({len(dvf_comps)} comps), using fallback pricing for {detected_city}")
+
+            # Department-specific fallback ranges (€/m²)
+            department = request.postal_code[:2]
+            fallback_ranges = {
+                "75": {"low": 9500, "high": 11000, "name": "Paris"},  # Paris
+                "92": {"low": 5500, "high": 7500, "name": "Hauts-de-Seine"},
+                "93": {"low": 3500, "high": 5000, "name": "Seine-Saint-Denis"},
+                "94": {"low": 4500, "high": 6000, "name": "Val-de-Marne"},
+                "91": {"low": 3500, "high": 4500, "name": "Essonne"},
+                "95": {"low": 3000, "high": 4000, "name": "Val-d'Oise"},
+                "78": {"low": 3500, "high": 4500, "name": "Yvelines"},
+                "77": {"low": 2500, "high": 3500, "name": "Seine-et-Marne"},
+            }
+
+            fallback = fallback_ranges.get(department, {"low": 2000, "high": 4000, "name": "France"})
+
+            if price_per_m2 < fallback["low"]:
+                price_verdict = "Under-priced"
+            elif price_per_m2 <= fallback["high"]:
+                price_verdict = "Average"
+            else:
+                price_verdict = "Overpriced"
+
+            price_source = f"Based on typical market ranges for {fallback['name']} (€{fallback['low']:,}-€{fallback['high']:,}/m²). DVF comparable sales data not available (need 3+ recent transactions)."
+
+        # Build purchase costs response object (costs_breakdown already calculated above)
+        purchase_costs_obj = PurchaseCosts(
+            down_payment=request.down_payment,
+            renovation_costs=request.renovation_costs,
+            registration_duties=costs_breakdown["registration_duties"],
+            notaire_fees=costs_breakdown["notaire_fees"],
+            disbursements=costs_breakdown["disbursements"],
+            mortgage_fees=costs_breakdown["mortgage_fees"],
+            total_fees=costs_breakdown["total"],
+            total_cash_required=request.down_payment + request.renovation_costs + costs_breakdown["total"]
+        )
 
         # Legal rent status using real rent control data
         rent_compliance = rent_control.check_rent_compliance(
@@ -161,6 +237,8 @@ async def evaluate_property(request: PropertyEvaluationRequest):
                 max_rent=rent_compliance["max_rent"],
                 median_rent=rent_compliance["median_rent"],
                 property_rent_per_m2=rent_compliance["property_rent_per_m2"],
+                total_monthly_rent=rent_compliance["total_monthly_rent"],
+                surface=rent_compliance["surface"],
                 is_compliant=rent_compliance["is_compliant"],
                 compliance_percentage=rent_compliance["compliance_percentage"],
                 is_estimate=rent_compliance.get("is_estimate", False)
@@ -207,7 +285,9 @@ async def evaluate_property(request: PropertyEvaluationRequest):
             cash_flow_projections=cash_flow_years,
             appreciation_source=appreciation_source,
             rent_band=rent_band,
-            city=detected_city
+            city=detected_city,
+            price_source=price_source,
+            purchase_costs=purchase_costs_obj
         )
 
     except Exception as e:
