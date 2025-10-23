@@ -155,34 +155,64 @@ async def evaluate_property(request: PropertyEvaluationRequest):
         else:
             verdict = "PASS"
 
-        # Price verdict using DVF database
-        from backend.integrations.dvf import fetch_dvf_comps, calculate_median_price_per_m2
+        # Price verdict using DVF database with progressive geographic search
+        from backend.integrations.dvf import (
+            fetch_dvf_comps_progressive,
+            calculate_weighted_median_and_bands
+        )
+        from datetime import datetime
 
         # Get detected city from postal code (needed for logging)
         detected_city = postal_codes.get_city_from_postal_code(request.postal_code)
 
-        # Fetch comparable sales from DVF
-        dvf_comps = await fetch_dvf_comps(
-            address=request.address,
+        # Fetch comparable sales from DVF with progressive search
+        # TODO: Get actual lat/lon from geocoding service or address
+        dvf_comps, geo_scope = await fetch_dvf_comps_progressive(
             postal_code=request.postal_code,
             surface=request.surface,
-            property_type="Appartement"  # TODO: Could be inferred from property characteristics
+            lat=None,  # Would come from geocoding
+            lon=None,  # Would come from geocoding
+            rooms=request.rooms,
+            property_type="Appartement",  # TODO: Could be inferred from property characteristics
+            min_comps=12
         )
 
         price_source = None
-        if dvf_comps and len(dvf_comps) >= 3:  # Need at least 3 comps for reliable comparison
-            median_market_price = calculate_median_price_per_m2(dvf_comps)
-            price_diff_pct = ((price_per_m2 - median_market_price) / median_market_price) * 100
+        if dvf_comps and len(dvf_comps) >= 12:  # Need at least 12 comps for robust statistics
+            # Calculate weighted median and percentile bands
+            stats = calculate_weighted_median_and_bands(
+                dvf_comps,
+                reference_date=datetime.now(),
+                subject_rooms=request.rooms
+            )
 
-            if price_diff_pct < -10:
+            median_market_price = stats["median"]
+            p25 = stats["p25"]
+            p75 = stats["p75"]
+            p10 = stats["p10"]
+            p90 = stats["p90"]
+
+            # Determine price verdict based on P25-P75 band
+            if price_per_m2 < p25:
                 price_verdict = "Under-priced"
-            elif price_diff_pct <= 10:
-                price_verdict = "Average"
+            elif price_per_m2 <= p75:
+                price_verdict = "Fair"
             else:
-                price_verdict = "Overpriced"
+                price_verdict = "Over-priced"
 
-            price_source = f"Based on {len(dvf_comps)} comparable sales from DVF database (Demandes de Valeurs Foncières). Median market price: €{median_market_price:.0f}/m²."
-            logger.info(f"DVF analysis: median €{median_market_price:.0f}/m², property €{price_per_m2:.0f}/m² ({price_diff_pct:+.1f}%)")
+            # Get time range from comps
+            dates = [c["date_mutation"] for c in dvf_comps if c.get("date_mutation")]
+            min_date = min(dates) if dates else "N/A"
+            max_date = max(dates) if dates else "N/A"
+
+            price_source = (
+                f"Based on {len(dvf_comps)} comparable sales from DVF (Demandes de Valeurs Foncières). "
+                f"Geographic scope: {geo_scope}. Time range: {min_date} to {max_date}. "
+                f"Weighted median: €{median_market_price:.0f}/m² (P25-P75: €{p25:.0f}-€{p75:.0f}/m²). "
+                f"⚠️ DVF data last updated June 2019 (6+ years old). "
+                f"Feature adjustments (elevator, balcony, DPE) not applied—data unavailable in DVF."
+            )
+            logger.info(f"DVF analysis: {len(dvf_comps)} comps, median €{median_market_price:.0f}/m², property €{price_per_m2:.0f}/m², scope: {geo_scope}")
         else:
             # Fallback to location-based market ranges if DVF data unavailable
             logger.warning(f"Insufficient DVF data ({len(dvf_comps)} comps), using fallback pricing for {detected_city}")
